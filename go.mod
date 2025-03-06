@@ -1,3 +1,3 @@
-module github.com/mmcgibbon1/buganizer
+module github.com/matthewmc1/buganizer
 
 go 1.22.3
