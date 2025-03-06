@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package buganizer;
 
-option go_package = "github.com/mmcgibbon1/buganizer/proto";
+option go_package = "github.com/matthewmc1/buganizer/proto";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
