@@ -1,0 +1,393 @@
+syntax = "proto3";
+
+package buganizer;
+
+option go_package = "github.com/mmcgibbon1/buganizer/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// Issue service for managing bugs and feature requests
+service IssueService {
+  // Create a new issue
+  rpc CreateIssue(CreateIssueRequest) returns (Issue);
+  
+  // Get issue by ID
+  rpc GetIssue(GetIssueRequest) returns (Issue);
+  
+  // Update an existing issue
+  rpc UpdateIssue(UpdateIssueRequest) returns (Issue);
+  
+  // List issues with filtering
+  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse);
+  
+  // Add a comment to an issue
+  rpc AddComment(AddCommentRequest) returns (Comment);
+  
+  // Add attachment to an issue
+  rpc AddAttachment(AddAttachmentRequest) returns (Attachment);
+}
+
+// SLA service for managing Service Level Agreements
+service SLAService {
+  // Calculate SLA target date based on priority and severity
+  rpc CalculateSLATarget(CalculateSLARequest) returns (SLATarget);
+  
+  // Check if issues are at risk of SLA breach
+  rpc CheckSLARisk(CheckSLARiskRequest) returns (CheckSLARiskResponse);
+  
+  // Get SLA statistics for a component or team
+  rpc GetSLAStats(GetSLAStatsRequest) returns (SLAStats);
+}
+
+// Notification service for integrations with messaging platforms
+service NotificationService {
+  // Send notification to Slack
+  rpc SendSlackNotification(NotificationRequest) returns (NotificationResponse);
+  
+  // Register webhook URL for notifications
+  rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
+  
+  // Update notification preferences
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (google.protobuf.Empty);
+}
+
+// Search service for querying and filtering issues
+service SearchService {
+  // Search issues with complex queries
+  rpc SearchIssues(SearchRequest) returns (SearchResponse);
+  
+  // Save a view (saved search)
+  rpc SaveView(SaveViewRequest) returns (SavedView);
+  
+  // Get a saved view
+  rpc GetView(GetViewRequest) returns (SavedView);
+  
+  // List saved views for a user or team
+  rpc ListViews(ListViewsRequest) returns (ListViewsResponse);
+}
+
+// Auth service for user authentication and authorization
+service AuthService {
+  // Authenticate with Google SSO
+  rpc AuthenticateWithGoogle(AuthenticateWithGoogleRequest) returns (AuthenticateResponse);
+  
+  // Validate token
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  // Get current user
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (User);
+}
+
+// Message definitions
+
+// Priority levels
+enum Priority {
+  P0 = 0; // Critical - immediate action required
+  P1 = 1; // High - resolve within 24 hours
+  P2 = 2; // Medium - resolve within 3 days
+  P3 = 3; // Low - resolve within 1 week
+  P4 = 4; // Trivial - no specific timeline
+}
+
+// Severity levels
+enum Severity {
+  S0 = 0; // Critical - system down
+  S1 = 1; // Major - significant impact
+  S2 = 2; // Moderate - partial functionality affected
+  S3 = 3; // Minor - edge case or cosmetic issue
+}
+
+// Status values
+enum Status {
+  NEW = 0;
+  ASSIGNED = 1;
+  IN_PROGRESS = 2;
+  FIXED = 3;
+  VERIFIED = 4;
+  CLOSED = 5;
+  DUPLICATE = 6;
+  WONT_FIX = 7;
+}
+
+// Issue represents a bug or feature request
+message Issue {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string reproduce_steps = 4;
+  string component_id = 5;
+  string reporter_id = 6;
+  string assignee_id = 7;
+  Priority priority = 8;
+  Severity severity = 9;
+  Status status = 10;
+  google.protobuf.Timestamp due_date = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  repeated string labels = 14;
+}
+
+// Component represents a specific part of the system
+message Component {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_id = 4;
+  string team_id = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// Comment represents a comment on an issue
+message Comment {
+  string id = 1;
+  string issue_id = 2;
+  string author_id = 3;
+  string content = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// Attachment represents a file attached to an issue
+message Attachment {
+  string id = 1;
+  string issue_id = 2;
+  string uploader_id = 3;
+  string filename = 4;
+  string file_url = 5;
+  int64 file_size = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// User represents a system user
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string google_id = 4;
+  string avatar_url = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// Team represents a group of users
+message Team {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string lead_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+// SavedView represents a saved search filter
+message SavedView {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  bool is_team_view = 4;
+  string team_id = 5;
+  string query_string = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// SLATarget represents the calculated target date based on priority/severity
+message SLATarget {
+  string issue_id = 1;
+  Priority priority = 2;
+  Severity severity = 3;
+  google.protobuf.Timestamp target_date = 4;
+  string description = 5; // Human-readable description of the SLA
+}
+
+// Request/Response definitions
+
+message CreateIssueRequest {
+  string title = 1;
+  string description = 2;
+  string reproduce_steps = 3;
+  string component_id = 4;
+  Priority priority = 5;
+  Severity severity = 6;
+  repeated string labels = 7;
+}
+
+message GetIssueRequest {
+  string id = 1;
+}
+
+message UpdateIssueRequest {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string reproduce_steps = 4;
+  string component_id = 5;
+  string assignee_id = 6;
+  Priority priority = 7;
+  Severity severity = 8;
+  Status status = 9;
+  repeated string labels = 10;
+}
+
+message ListIssuesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string filter = 3; // Query filter like "is:open assignee:me"
+}
+
+message ListIssuesResponse {
+  repeated Issue issues = 1;
+  string next_page_token = 2;
+  int32 total_size = 3;
+}
+
+message AddCommentRequest {
+  string issue_id = 1;
+  string content = 2;
+}
+
+message AddAttachmentRequest {
+  string issue_id = 1;
+  string filename = 2;
+  bytes content = 3;
+}
+
+message CalculateSLARequest {
+  Priority priority = 1;
+  Severity severity = 2;
+  string component_id = 3;
+}
+
+message CheckSLARiskRequest {
+  string team_id = 1;
+  bool include_closed = 2;
+}
+
+message CheckSLARiskResponse {
+  repeated SLARiskIssue at_risk_issues = 1;
+  int32 total_at_risk = 2;
+}
+
+message SLARiskIssue {
+  string issue_id = 1;
+  string title = 2;
+  google.protobuf.Timestamp due_date = 3;
+  int32 hours_remaining = 4;
+  Priority priority = 5;
+  Severity severity = 6;
+}
+
+message GetSLAStatsRequest {
+  string component_id = 1;
+  string team_id = 2;
+  google.protobuf.Timestamp start_date = 3;
+  google.protobuf.Timestamp end_date = 4;
+}
+
+message SLAStats {
+  int32 total_issues = 1;
+  int32 met_sla = 2;
+  int32 missed_sla = 3;
+  float sla_compliance_percentage = 4;
+  map<string, int32> issues_by_priority = 5;
+  map<string, int32> issues_by_severity = 6;
+  map<string, float> compliance_by_priority = 7;
+  map<string, float> compliance_by_severity = 8;
+}
+
+message NotificationRequest {
+  enum NotificationType {
+    ISSUE_CREATED = 0;
+    ISSUE_UPDATED = 1;
+    ISSUE_ASSIGNED = 2;
+    COMMENT_ADDED = 3;
+    SLA_AT_RISK = 4;
+    SLA_BREACHED = 5;
+  }
+  
+  string issue_id = 1;
+  NotificationType type = 2;
+  string channel = 3; // Slack channel
+  string message = 4;
+}
+
+message NotificationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RegisterWebhookRequest {
+  string url = 1;
+  string description = 2;
+  repeated string event_types = 3; // Types of events to notify about
+  string secret = 4; // Webhook secret for validation
+}
+
+message RegisterWebhookResponse {
+  string id = 1;
+  bool success = 2;
+}
+
+message UpdateNotificationPreferencesRequest {
+  string user_id = 1;
+  bool email_notifications = 2;
+  bool slack_notifications = 3;
+  repeated string subscribed_events = 4;
+}
+
+message SearchRequest {
+  string query = 1; // Query like "is:open priority:p0 component:frontend"
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message SearchResponse {
+  repeated Issue issues = 1;
+  string next_page_token = 2;
+  int32 total_results = 3;
+}
+
+message SaveViewRequest {
+  string name = 1;
+  string query_string = 2;
+  bool is_team_view = 3;
+  string team_id = 4;
+}
+
+message GetViewRequest {
+  string id = 1;
+}
+
+message ListViewsRequest {
+  string user_id = 1;
+  string team_id = 2;
+}
+
+message ListViewsResponse {
+  repeated SavedView views = 1;
+}
+
+message AuthenticateWithGoogleRequest {
+  string google_token = 1;
+}
+
+message AuthenticateResponse {
+  string token = 1;
+  User user = 2;
+  int64 expires_at = 3;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  string user_id = 2;
+}
+
+message GetCurrentUserRequest {
+  string token = 1;
+}
