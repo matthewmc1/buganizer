@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/mmcgibbon1/buganizer/models"
-	pb "github.com/mmcgibbon1/buganizer/proto"
-	"github.com/mmcgibbon1/buganizer/repositories"
+	"github.com/matthewmc1/buganizer/models"
+	pb "github.com/matthewmc1/buganizer/proto"
+	"github.com/matthewmc1/buganizer/repositories"
 )
 
 // Service implements the SLAService gRPC interface
@@ -94,11 +94,6 @@ func (s *Service) CalculateSLATarget(ctx context.Context, req *pb.CalculateSLARe
 		Severity:    req.Severity,
 		TargetDate:  timestamppb.New(targetDate),
 		Description: description,
-	}
-
-	// If the request has an issue_id, add it to the response
-	if req.IssueId != "" {
-		response.IssueId = req.IssueId
 	}
 
 	return response, nil

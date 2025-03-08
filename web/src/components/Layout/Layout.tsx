@@ -24,6 +24,11 @@ import {
   Container,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -53,6 +58,7 @@ const Layout: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [notificationsAnchorEl, setNotificationsAnchorEl] = useState<null | HTMLElement>(null);
   const [profileAnchorEl, setProfileAnchorEl] = useState<null | HTMLElement>(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
@@ -73,10 +79,21 @@ const Layout: React.FC = () => {
   const handleProfileClose = () => {
     setProfileAnchorEl(null);
   };
+  
+  const handleLogoutClick = () => {
+    handleProfileClose(); // Close profile menu
+    setLogoutDialogOpen(true); // Open confirmation dialog
+  };
+  
+  const handleLogoutCancel = () => {
+    setLogoutDialogOpen(false);
+  };
 
-  const handleLogout = () => {
+  const handleLogoutConfirm = () => {
+    setLogoutDialogOpen(false);
     logout();
-    navigate('/login');
+    // Force navigation to login page
+    navigate('/login', { replace: true });
   };
   
   const drawerItems = [
@@ -357,7 +374,7 @@ const Layout: React.FC = () => {
                 <ListItemText>Settings</ListItemText>
               </MenuItem>
               <Divider />
-              <MenuItem onClick={handleLogout}>
+              <MenuItem onClick={handleLogoutClick}>
                 <ListItemIcon>
                   <LogoutIcon fontSize="small" />
                 </ListItemIcon>
@@ -406,6 +423,31 @@ const Layout: React.FC = () => {
           <Outlet />
         </Container>
       </Box>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog
+        open={logoutDialogOpen}
+        onClose={handleLogoutCancel}
+        aria-labelledby="logout-dialog-title"
+        aria-describedby="logout-dialog-description"
+      >
+        <DialogTitle id="logout-dialog-title">
+          Confirm Logout
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="logout-dialog-description">
+            Are you sure you want to log out? Any unsaved work may be lost.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleLogoutCancel} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleLogoutConfirm} color="error" variant="contained" autoFocus>
+            Logout
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

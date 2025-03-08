@@ -5,6 +5,7 @@ import { ThemeProvider, createTheme, responsiveFontSizes } from '@mui/material/s
 import CssBaseline from '@mui/material/CssBaseline';
 
 // Components
+import Dashboard from './components/Dashboard/Dashboard';
 import Layout from './components/Layout/Layout';
 import IssueList from './components/IssueList/IssueList';
 import IssueDetail from './components/IssueDetail/IssueDetail';
@@ -182,7 +183,8 @@ const App: React.FC = () => {
           {/* Protected routes */}
           <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/issues" />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/issues" element={<IssueList />} />
               <Route path="/issues/new" element={<CreateIssue />} />
               <Route path="/issues/:id" element={<IssueDetail />} />

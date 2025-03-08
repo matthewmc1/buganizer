@@ -18,15 +18,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/mmcgibbon1/buganizer/config"
-	"github.com/mmcgibbon1/buganizer/middleware"
-	pb "github.com/mmcgibbon1/buganizer/proto"
-	"github.com/mmcgibbon1/buganizer/repositories/postgres"
-	"github.com/mmcgibbon1/buganizer/services/auth"
-	"github.com/mmcgibbon1/buganizer/services/issue"
-	"github.com/mmcgibbon1/buganizer/services/notification"
-	"github.com/mmcgibbon1/buganizer/services/search"
-	"github.com/mmcgibbon1/buganizer/services/sla"
+	"github.com/matthewmc1/buganizer/config"
+	"github.com/matthewmc1/buganizer/middleware"
+	pb "github.com/matthewmc1/buganizer/proto"
+	"github.com/matthewmc1/buganizer/repositories/postgres"
+	"github.com/matthewmc1/buganizer/services/auth"
+	"github.com/matthewmc1/buganizer/services/issue"
+	"github.com/matthewmc1/buganizer/services/notification"
+	"github.com/matthewmc1/buganizer/services/search"
+	"github.com/matthewmc1/buganizer/services/sla"
 )
 
 func main() {
@@ -143,7 +143,7 @@ func setupGRPCServer(cfg *config.Config, repos *Repositories) *grpc.Server {
 	slaService := sla.NewService(
 		repos.IssueRepo,
 		repos.ComponentRepo,
-		&pb.NotificationServiceClient{}, // This will be set after services are registered
+		nil, // Initialize with nil, will be set later
 	)
 
 	// Create issue service
@@ -151,8 +151,8 @@ func setupGRPCServer(cfg *config.Config, repos *Repositories) *grpc.Server {
 		repos.IssueRepo,
 		repos.CommentRepo,
 		repos.AttachmentRepo,
-		&pb.SLAServiceClient{},          // This will be set after services are registered
-		&pb.NotificationServiceClient{}, // This will be set after services are registered
+		nil, // Initialize with nil, will be set later
+		nil, // Initialize with nil, will be set later
 	)
 
 	// Create search service

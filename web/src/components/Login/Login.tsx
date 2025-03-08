@@ -18,6 +18,7 @@ import {
   CardContent,
   Grid,
   alpha,
+  Stack,
 } from '@mui/material';
 import { Google as GoogleIcon, BugReport as BugReportIcon } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
@@ -47,7 +48,7 @@ function TabPanel(props: TabPanelProps) {
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const { loginWithGoogle, isAuthenticated, loading, error } = useAuth();
+  const { loginWithGoogle, loginWithCredentials, isAuthenticated, loading, error } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [localError, setLocalError] = useState<string | null>(null);
   
@@ -56,10 +57,10 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
 
-  // Redirect to home if already authenticated
+  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/issues', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -74,6 +75,7 @@ const Login: React.FC = () => {
       // In a real implementation, this would integrate with Google OAuth
       // For now, we'll just simulate it with a fake token
       await loginWithGoogle('fake_google_token');
+      navigate('/issues', { replace: true });
     } catch (err) {
       setLocalError('Failed to log in with Google. Please try again.');
       console.error('Google login error:', err);
@@ -97,30 +99,10 @@ const Login: React.FC = () => {
     setLocalError(null);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // For development, accept any email/password with special cases for different roles
-      // In production, you would call your real authentication API
-      
-      // Mock user based on email domain
-      const mockToken = 'dev_token_123';
-      const mockUser = {
-        id: '1',
-        name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        email,
-        googleId: 'dev123',
-        avatarUrl: `https://ui-avatars.com/api/?name=${email.split('@')[0]}&background=random`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Store the token
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      // Redirect
-      window.location.href = '/';
+      // Use the auth hook's loginWithCredentials method
+      await loginWithCredentials(email, password);
+      // Successful login, navigate to issues dashboard
+      navigate('/issues', { replace: true });
     } catch (err) {
       setLocalError('Login failed. Please check your credentials and try again.');
       console.error('Local login error:', err);
@@ -136,6 +118,11 @@ const Login: React.FC = () => {
     { email: 'manager@buganizer.dev', role: 'Manager' },
     { email: 'tester@buganizer.dev', role: 'QA Tester' },
   ];
+
+  const handleQuickLogin = (email: string) => {
+    setEmail(email);
+    setPassword('password'); // Set a default password
+  };
 
   return (
     <Box 
@@ -263,7 +250,77 @@ const Login: React.FC = () => {
 
                 {/* Developer Login Tab */}
                 <TabPanel value={tabValue} index={1}>
-                  {/* Developer login form content */}
+                  {localError && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                      {localError}
+                    </Alert>
+                  )}
+                  
+                  <form onSubmit={handleLocalLogin}>
+                    <TextField
+                      label="Email"
+                      type="email"
+                      fullWidth
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      margin="normal"
+                      variant="outlined"
+                      required
+                      autoComplete="email"
+                    />
+                    
+                    <TextField
+                      label="Password"
+                      type="password"
+                      fullWidth
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      margin="normal"
+                      variant="outlined"
+                      required
+                      autoComplete="current-password"
+                      sx={{ mb: 2 }}
+                    />
+                    
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      fullWidth
+                      type="submit"
+                      disabled={localLoading}
+                      sx={{ py: 1.5, mb: 2 }}
+                    >
+                      {localLoading ? <CircularProgress size={24} /> : 'Sign In'}
+                    </Button>
+                  </form>
+                  
+                  <Divider sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Quick Access
+                    </Typography>
+                  </Divider>
+                  
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Sample accounts (use any password):
+                  </Typography>
+                  
+                  <Stack spacing={1}>
+                    {predefinedAccounts.map((account) => (
+                      <Button
+                        key={account.email}
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleQuickLogin(account.email)}
+                        sx={{ justifyContent: 'space-between' }}
+                      >
+                        <Typography variant="body2">{account.email}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {account.role}
+                        </Typography>
+                      </Button>
+                    ))}
+                  </Stack>
                 </TabPanel>
               </CardContent>
             </Card>

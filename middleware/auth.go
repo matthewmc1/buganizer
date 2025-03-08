@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/mmcgibbon1/buganizer/config"
-	"github.com/mmcgibbon1/buganizer/services/auth"
+	"github.com/matthewmc1/buganizer/config"
+	"github.com/matthewmc1/buganizer/services/auth"
 )
 
 // AuthInterceptor is a server interceptor for authentication and authorization

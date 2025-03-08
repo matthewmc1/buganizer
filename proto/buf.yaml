@@ -1,0 +1,4 @@
+version: v1
+name: buf.build/github.com/matthewmc1/buganizer
+deps:
+  - buf.build/googleapis/googleapis

@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mmcgibbon1/buganizer/models"
-	"github.com/mmcgibbon1/buganizer/repositories"
+	"github.com/matthewmc1/buganizer/models"
+	"github.com/matthewmc1/buganizer/repositories"
 )
 
 // AttachmentRepository implements the AttachmentRepository interface for PostgreSQL

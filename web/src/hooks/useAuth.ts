@@ -205,8 +205,11 @@ export const useAuth = () => {
 
   // Logout
   const logout = useCallback(() => {
+    // Clear all auth-related storage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Reset auth state
     setAuthState({
       user: null,
       token: null,
@@ -214,6 +217,12 @@ export const useAuth = () => {
       loading: false,
       error: null,
     });
+    
+    // Clear authorization header to prevent future authenticated requests
+    delete axios.defaults.headers.common['Authorization'];
+    
+    // In a real app, you might also want to invalidate the token on the server
+    // axios.post('/api/v1/auth/logout');
   }, []);
 
   // Load user on mount

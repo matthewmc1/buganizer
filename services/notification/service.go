@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mmcgibbon1/buganizer/config"
-	"github.com/mmcgibbon1/buganizer/models"
-	pb "github.com/mmcgibbon1/buganizer/proto"
-	"github.com/mmcgibbon1/buganizer/repositories"
+	"github.com/matthewmc1/buganizer/config"
+	"github.com/matthewmc1/buganizer/models"
+	pb "github.com/matthewmc1/buganizer/proto"
+	"github.com/matthewmc1/buganizer/repositories"
 )
 
 // Service implements the NotificationService gRPC interface

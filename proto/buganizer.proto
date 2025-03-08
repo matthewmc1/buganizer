@@ -6,77 +6,165 @@ option go_package = "github.com/matthewmc1/buganizer/proto";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
 
 // Issue service for managing bugs and feature requests
 service IssueService {
   // Create a new issue
-  rpc CreateIssue(CreateIssueRequest) returns (Issue);
+  rpc CreateIssue(CreateIssueRequest) returns (Issue) {
+    option (google.api.http) = {
+      post: "/api/v1/issues"
+      body: "*"
+    };
+  }
   
   // Get issue by ID
-  rpc GetIssue(GetIssueRequest) returns (Issue);
+  rpc GetIssue(GetIssueRequest) returns (Issue) {
+    option (google.api.http) = {
+      get: "/api/v1/issues/{id}"
+    };
+  }
   
   // Update an existing issue
-  rpc UpdateIssue(UpdateIssueRequest) returns (Issue);
+  rpc UpdateIssue(UpdateIssueRequest) returns (Issue) {
+    option (google.api.http) = {
+      patch: "/api/v1/issues/{id}"
+      body: "*"
+    };
+  }
   
   // List issues with filtering
-  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse);
+  rpc ListIssues(ListIssuesRequest) returns (ListIssuesResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/issues"
+    };
+  }
   
   // Add a comment to an issue
-  rpc AddComment(AddCommentRequest) returns (Comment);
+  rpc AddComment(AddCommentRequest) returns (Comment) {
+    option (google.api.http) = {
+      post: "/api/v1/issues/{issue_id}/comments"
+      body: "*"
+    };
+  }
   
   // Add attachment to an issue
-  rpc AddAttachment(AddAttachmentRequest) returns (Attachment);
+  rpc AddAttachment(AddAttachmentRequest) returns (Attachment) {
+    option (google.api.http) = {
+      post: "/api/v1/issues/{issue_id}/attachments"
+      body: "*"
+    };
+  }
 }
 
 // SLA service for managing Service Level Agreements
 service SLAService {
   // Calculate SLA target date based on priority and severity
-  rpc CalculateSLATarget(CalculateSLARequest) returns (SLATarget);
+  rpc CalculateSLATarget(CalculateSLARequest) returns (SLATarget) {
+    option (google.api.http) = {
+      post: "/api/v1/sla/calculate"
+      body: "*"
+    };
+  }
   
   // Check if issues are at risk of SLA breach
-  rpc CheckSLARisk(CheckSLARiskRequest) returns (CheckSLARiskResponse);
+  rpc CheckSLARisk(CheckSLARiskRequest) returns (CheckSLARiskResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/sla/risk"
+    };
+  }
   
   // Get SLA statistics for a component or team
-  rpc GetSLAStats(GetSLAStatsRequest) returns (SLAStats);
+  rpc GetSLAStats(GetSLAStatsRequest) returns (SLAStats) {
+    option (google.api.http) = {
+      get: "/api/v1/sla/stats"
+    };
+  }
 }
 
 // Notification service for integrations with messaging platforms
 service NotificationService {
   // Send notification to Slack
-  rpc SendSlackNotification(NotificationRequest) returns (NotificationResponse);
+  rpc SendSlackNotification(NotificationRequest) returns (NotificationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notifications/slack"
+      body: "*"
+    };
+  }
   
   // Register webhook URL for notifications
-  rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
+  rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/webhooks"
+      body: "*"
+    };
+  }
   
   // Update notification preferences
-  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (google.protobuf.Empty);
+  rpc UpdateNotificationPreferences(UpdateNotificationPreferencesRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/api/v1/notifications/preferences"
+      body: "*"
+    };
+  }
 }
 
 // Search service for querying and filtering issues
 service SearchService {
   // Search issues with complex queries
-  rpc SearchIssues(SearchRequest) returns (SearchResponse);
+  rpc SearchIssues(SearchRequest) returns (SearchResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/issues/search"
+    };
+  }
   
   // Save a view (saved search)
-  rpc SaveView(SaveViewRequest) returns (SavedView);
+  rpc SaveView(SaveViewRequest) returns (SavedView) {
+    option (google.api.http) = {
+      post: "/api/v1/views"
+      body: "*"
+    };
+  }
   
   // Get a saved view
-  rpc GetView(GetViewRequest) returns (SavedView);
+  rpc GetView(GetViewRequest) returns (SavedView) {
+    option (google.api.http) = {
+      get: "/api/v1/views/{id}"
+    };
+  }
   
   // List saved views for a user or team
-  rpc ListViews(ListViewsRequest) returns (ListViewsResponse);
+  rpc ListViews(ListViewsRequest) returns (ListViewsResponse) {
+    option (google.api.http) = {
+      get: "/api/v1/views"
+    };
+  }
 }
 
 // Auth service for user authentication and authorization
 service AuthService {
   // Authenticate with Google SSO
-  rpc AuthenticateWithGoogle(AuthenticateWithGoogleRequest) returns (AuthenticateResponse);
+  rpc AuthenticateWithGoogle(AuthenticateWithGoogleRequest) returns (AuthenticateResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/auth/google"
+      body: "*"
+    };
+  }
   
   // Validate token
-  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/auth/validate"
+      body: "*"
+    };
+  }
   
   // Get current user
-  rpc GetCurrentUser(GetCurrentUserRequest) returns (User);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (User) {
+    option (google.api.http) = {
+      get: "/api/v1/auth/user"
+    };
+  }
 }
 
 // Message definitions

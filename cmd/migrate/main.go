@@ -6,7 +6,7 @@ import (
 	"log"
 
 	_ "github.com/lib/pq"
-	"github.com/mmcgibbon1/buganizer/config"
+	"github.com/matthewmc1/buganizer/config"
 )
 
 // SQL statements to create the initial schema
