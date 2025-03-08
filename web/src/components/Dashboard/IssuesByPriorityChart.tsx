@@ -1,34 +1,15 @@
+// src/components/Dashboard/IssuesByPriorityChart.tsx
 import React from 'react';
-import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-// Fallback data in case no data is provided
-const fallbackData = [
-  { priority: 'No Data', count: 0, color: '#d1d5db' }
-];
-
-// Define tooltip props
-interface TooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    value: number;
-    payload: any;
-  }>;
-  label?: string;
-}
-
-// Custom tooltip with proper typing
-const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-2 border border-gray-200 shadow-md rounded">
-        <p className="font-medium">{`${label}: ${payload[0].value} issues`}</p>
-      </div>
-    );
-  }
-  return null;
-};
+import { Box, Typography, useTheme } from '@mui/material';
+import { ResponsiveBar } from '@nivo/bar';
+import { Priority } from '../../types/issues';
 
 interface PriorityData {
+  priority: string;
+  count: number;
+}
+
+interface TooltipData {
   priority: string;
   count: number;
   color: string;
@@ -38,84 +19,116 @@ interface IssuesByPriorityChartProps {
   data: PriorityData[];
 }
 
-const IssuesByPriorityChart: React.FC<IssuesByPriorityChartProps> = ({ data = [] }) => {
-  // Use provided data or fallback if empty
-  const chartData = data.length > 0 ? data : fallbackData;
-
-  // Inside your component function, add these wrapper components:
-  const BarChartWrapper = (props: any) => {
-    const { BarChart } = require('recharts');
-    return <BarChart {...props} />;
+const IssuesByPriorityChart: React.FC<IssuesByPriorityChartProps> = ({ data }) => {
+  const theme = useTheme();
+  
+  // Map priority to color
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case Priority.P0:
+        return theme.palette.error.main;
+      case Priority.P1:
+        return theme.palette.error.light;
+      case Priority.P2:
+        return theme.palette.warning.main;
+      case Priority.P3:
+        return theme.palette.info.main;
+      case Priority.P4:
+        return theme.palette.success.main;
+      default:
+        return theme.palette.grey[500];
+    }
   };
 
-  const BarWrapper = (props: any) => {
-    const { Bar } = require('recharts');
-    return <Bar {...props} />;
-  };
+  // Format data for the chart
+  const chartData = data.map(item => ({
+    priority: item.priority,
+    count: item.count,
+    color: getPriorityColor(item.priority),
+  }));
 
-  const CellWrapper = (props: any) => {
-    const { Cell } = require('recharts');
-    return <Cell {...props} />;
-  };
+  // Sort data by priority
+  const sortedData = [...chartData].sort((a, b) => {
+    const priorityOrder = [Priority.P0, Priority.P1, Priority.P2, Priority.P3, Priority.P4];
+    return priorityOrder.indexOf(a.priority as Priority) - priorityOrder.indexOf(b.priority as Priority);
+  });
 
-  // Add missing wrappers
-  const CartesianGridWrapper = (props: any) => {
-    const { CartesianGrid } = require('recharts');
-    return <CartesianGrid {...props} />;
-  };
-
-  const XAxisWrapper = (props: any) => {
-    const { XAxis } = require('recharts');
-    return <XAxis {...props} />;
-  };
-
-  const YAxisWrapper = (props: any) => {
-    const { YAxis } = require('recharts');
-    return <YAxis {...props} />;
-  };
-
-  const TooltipWrapper = (props: any) => {
-    const { Tooltip } = require('recharts');
-    return <Tooltip {...props} />;
-  };
-
-  const LegendWrapper = (props: any) => {
-    const { Legend } = require('recharts');
-    return <Legend {...props} />;
-  };
-
-  const ResponsiveContainerWrapper = (props: any) => {
-    const { ResponsiveContainer } = require('recharts');
-    return <ResponsiveContainer {...props} />;
-  };
+  // If no data, show a message
+  if (!data || data.every(item => item.count === 0)) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        height: '100%' 
+      }}>
+        <Typography variant="body1" color="text.secondary">
+          No issues assigned to you
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
-    <div className="w-full h-full">
-      <ResponsiveContainerWrapper width="100%" height={300}>
-        <BarChartWrapper
-          width={500}
-          height={300}
-          data={chartData}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
-        >
-          <CartesianGridWrapper strokeDasharray="3 3" />
-          <XAxisWrapper dataKey="priority" />
-          <YAxisWrapper />
-          <TooltipWrapper content={<CustomTooltip />} />
-          <LegendWrapper />
-          <BarWrapper dataKey="count" name="Number of Issues">
-            {chartData.map((entry, index) => (
-              <CellWrapper key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
-            ))}
-          </BarWrapper>
-        </BarChartWrapper>
-      </ResponsiveContainerWrapper>
-    </div>
+    <Box sx={{ height: '100%' }}>
+      <ResponsiveBar
+        data={sortedData}
+        keys={['count']}
+        indexBy="priority"
+        margin={{ top: 50, right: 50, bottom: 50, left: 60 }}
+        padding={0.3}
+        valueScale={{ type: 'linear' }}
+        indexScale={{ type: 'band', round: true }}
+        colors={({ data }) => data.color}
+        borderColor={{
+          from: 'color',
+          modifiers: [['darker', 1.6]],
+        }}
+        axisTop={null}
+        axisRight={null}
+        axisBottom={{
+          tickSize: 5,
+          tickPadding: 5,
+          tickRotation: 0,
+          legend: 'Priority',
+          legendPosition: 'middle',
+          legendOffset: 32,
+        }}
+        axisLeft={{
+          tickSize: 5,
+          tickPadding: 5,
+          tickRotation: 0,
+          legend: 'Count',
+          legendPosition: 'middle',
+          legendOffset: -40,
+        }}
+        labelSkipWidth={12}
+        labelSkipHeight={12}
+        labelTextColor={{
+          from: 'color',
+          modifiers: [['darker', 2]],
+        }}
+        role="application"
+        ariaLabel="Issues by priority"
+        barAriaLabel={e => `${e.indexValue}: ${e.value} issues`}
+        tooltip={({ data }: { data: TooltipData }) => (
+          <Box 
+            sx={{ 
+              backgroundColor: theme.palette.background.paper, 
+              p: 1, 
+              border: '1px solid',
+              borderColor: theme.palette.divider,
+              borderRadius: 1,
+              boxShadow: theme.shadows[2],
+            }}
+          >
+            <Typography variant="body2" fontWeight="bold">
+              {data.priority}: {data.count} issues
+            </Typography>
+          </Box>
+        )}
+      />
+    </Box>
   );
 };
 

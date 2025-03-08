@@ -184,6 +184,39 @@ export const api = {
           end_date: endDate 
         } 
       }),
+  },
+
+   // Assignments
+   assignments: {
+    // Search assignments
+    searchAssignments: (params: {
+      search?: string;
+      status?: string;
+      page_size?: number;
+      page_token?: string;
+      order_by?: string;
+      order_direction?: string;
+    }) => apiClient.get('/api/v1/assignments/search', { params }),
+    
+    // Get a specific assignment
+    getAssignment: (id: string) => 
+      apiClient.get(`/api/v1/assignments/${id}`),
+    
+    // Get issues for an assignment
+    getAssignmentIssues: (id: string) => 
+      apiClient.get(`/api/v1/assignments/${id}/issues`),
+    
+    // Create a new assignment
+    createAssignment: (data: any) => 
+      apiClient.post('/api/v1/assignments', data),
+    
+    // Update an existing assignment
+    updateAssignment: (id: string, data: any) => 
+      apiClient.patch(`/api/v1/assignments/${id}`, data),
+    
+    // Delete an assignment
+    deleteAssignment: (id: string) => 
+      apiClient.delete(`/api/v1/assignments/${id}`),
   }
 };
 

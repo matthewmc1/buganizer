@@ -1,46 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import {
-  LineChart as RechartsLineChart,
-  Line as RechartsLine,
-  XAxis as RechartsXAxis,
-  YAxis as RechartsYAxis,
-  CartesianGrid as RechartsCartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend as RechartsLegend,
-  ResponsiveContainer as RechartsResponsiveContainer
-} from 'recharts';
-// Import components at the top level
-import IssuesByComponentChart from './IssuesByComponentChart';
-import IssuesByPriorityChart from './IssuesByPriorityChart';
+
+// Define types for our data
+interface AtRiskIssue {
+  issueId: string;
+  title: string;
+  priority: string;
+  severity: string;
+  hoursRemaining: number;
+  dueDate: string;
+}
+
+interface DashboardData {
+  openIssues: number;
+  slaBreaches: number;
+  slaAtRisk: number;
+  slaCompliance: number;
+  atRiskIssues: AtRiskIssue[];
+}
 
 // Sample mock data for the dashboard
-const sampleData = {
+const sampleData: DashboardData = {
   openIssues: 12,
   slaBreaches: 2,
   slaAtRisk: 3,
   slaCompliance: 87.5,
-  complianceTrend: [
-    { month: 'Jan', value: 82 },
-    { month: 'Feb', value: 84 },
-    { month: 'Mar', value: 86 },
-    { month: 'Apr', value: 85 },
-    { month: 'May', value: 88 },
-    { month: 'Jun', value: 87.5 }
-  ],
-  issuesByComponent: [
-    { name: 'Frontend', value: 12, color: '#3b82f6' },
-    { name: 'Backend API', value: 8, color: '#10b981' },
-    { name: 'Database', value: 5, color: '#f59e0b' },
-    { name: 'Authentication', value: 3, color: '#ef4444' },
-    { name: 'Infrastructure', value: 4, color: '#8b5cf6' },
-  ],
-  issuesByPriority: [
-    { priority: 'P0', count: 2, color: '#ef4444' },  // Critical - red
-    { priority: 'P1', count: 5, color: '#f59e0b' },  // High - amber
-    { priority: 'P2', count: 8, color: '#3b82f6' },  // Medium - blue
-    { priority: 'P3', count: 12, color: '#10b981' }, // Low - green
-    { priority: 'P4', count: 3, color: '#6b7280' },  // Trivial - gray
-  ],
   atRiskIssues: [
     {
       issueId: 'ISSUE-123',
@@ -85,180 +68,244 @@ const sampleData = {
   ]
 };
 
-// Define the type for dashboard data
-interface DashboardData {
-  openIssues: number;
-  slaBreaches: number;
-  slaAtRisk: number;
-  slaCompliance: number;
-  complianceTrend: { month: string; value: number }[];
-  issuesByComponent: { name: string; value: number; color: string }[];
-  issuesByPriority: { priority: string; count: number; color: string }[];
-  atRiskIssues: {
-    issueId: string;
-    title: string;
-    priority: string;
-    severity: string;
-    hoursRemaining: number;
-    dueDate: string;
-  }[];
-}
-
-// Create wrapper components for Recharts
-const LineChartWrapper = (props: any) => {
-  const { LineChart } = require('recharts');
-  return <LineChart {...props} />;
-};
-
-const LineWrapper = (props: any) => {
-  const { Line } = require('recharts');
-  return <Line {...props} />;
-};
-
-const XAxisWrapper = (props: any) => {
-  const { XAxis } = require('recharts');
-  return <XAxis {...props} />;
-};
-
-const YAxisWrapper = (props: any) => {
-  const { YAxis } = require('recharts');
-  return <YAxis {...props} />;
-};
-
-const CartesianGridWrapper = (props: any) => {
-  const { CartesianGrid } = require('recharts');
-  return <CartesianGrid {...props} />;
-};
-
-const TooltipWrapper = (props: any) => {
-  const { Tooltip } = require('recharts');
-  return <Tooltip {...props} />;
-};
-
-const LegendWrapper = (props: any) => {
-  const { Legend } = require('recharts');
-  return <Legend {...props} />;
-};
-
-const ResponsiveContainerWrapper = (props: any) => {
-  const { ResponsiveContainer } = require('recharts');
-  return <ResponsiveContainer {...props} />;
-};
-
-// Dashboard component
-const Dashboard = () => {
+// Simple Dashboard component without external dependencies
+const SimpleDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
-  // Simulate data loading on component mount
+  // Simulate data loading
   useEffect(() => {
-    // Simulate API call with setTimeout
     const timer = setTimeout(() => {
       setDashboardData(sampleData);
       setLoading(false);
     }, 1000);
 
-    return () => clearTimeout(timer); // Clean up on unmount
+    return () => clearTimeout(timer);
   }, []);
 
-  // Show loading state if data is not yet loaded
   if (loading || !dashboardData) {
     return (
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-        <div className="w-full h-2 bg-blue-100 rounded">
-          <div className="w-1/3 h-full bg-blue-500 rounded animate-pulse"></div>
+      <div style={{ padding: '1rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Dashboard</h1>
+        <div style={{ width: '100%', height: '0.5rem', backgroundColor: '#e6f2ff', borderRadius: '0.25rem' }}>
+          <div 
+            style={{ 
+              width: '33%', 
+              height: '100%', 
+              backgroundColor: '#3b82f6', 
+              borderRadius: '0.25rem',
+              animation: 'pulse 1.5s infinite'
+            }} 
+          />
         </div>
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <div style={{ padding: '1rem' }}>
+      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Dashboard</h1>
       
       {/* Summary Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
         {/* Open Issues Card */}
-        <div className="bg-blue-50 p-4 rounded-lg shadow hover:shadow-lg transition-all">
-          <div className="flex items-center mb-2">
-            <span className="text-blue-500 mr-2">📋</span>
-            <h2 className="text-lg font-semibold">My Open Issues</h2>
+        <div style={{ 
+          backgroundColor: '#e6f2ff', 
+          padding: '1rem', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          transition: 'transform 0.2s, box-shadow 0.2s'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ color: '#3b82f6', marginRight: '0.5rem' }}>📋</span>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>My Open Issues</h2>
           </div>
-          <p className="text-3xl font-bold mb-2">{dashboardData.openIssues}</p>
-          <button className="text-blue-500 text-sm font-medium">
+          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            {dashboardData.openIssues}
+          </p>
+          <button style={{ 
+            color: '#3b82f6', 
+            fontSize: '0.875rem', 
+            fontWeight: '500',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer'
+          }}>
             View All →
           </button>
         </div>
         
         {/* SLA Breaches Card */}
-        <div className="bg-red-50 p-4 rounded-lg shadow hover:shadow-lg transition-all">
-          <div className="flex items-center mb-2">
-            <span className="text-red-500 mr-2">🚨</span>
-            <h2 className="text-lg font-semibold">SLA Breaches</h2>
+        <div style={{ 
+          backgroundColor: '#fee2e2', 
+          padding: '1rem', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ color: '#ef4444', marginRight: '0.5rem' }}>🚨</span>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Breaches</h2>
           </div>
-          <p className="text-3xl font-bold mb-2">{dashboardData.slaBreaches}</p>
-          <button className="text-red-500 text-sm font-medium">
+          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            {dashboardData.slaBreaches}
+          </p>
+          <button style={{ 
+            color: '#ef4444', 
+            fontSize: '0.875rem', 
+            fontWeight: '500',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer'
+          }}>
             Resolve Now →
           </button>
         </div>
         
         {/* At Risk Card */}
-        <div className="bg-yellow-50 p-4 rounded-lg shadow hover:shadow-lg transition-all">
-          <div className="flex items-center mb-2">
-            <span className="text-yellow-500 mr-2">⚠️</span>
-            <h2 className="text-lg font-semibold">At Risk</h2>
+        <div style={{ 
+          backgroundColor: '#fef3c7', 
+          padding: '1rem', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ color: '#f59e0b', marginRight: '0.5rem' }}>⚠️</span>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>At Risk</h2>
           </div>
-          <p className="text-3xl font-bold mb-2">{dashboardData.slaAtRisk}</p>
-          <button className="text-yellow-500 text-sm font-medium">
+          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            {dashboardData.slaAtRisk}
+          </p>
+          <button style={{ 
+            color: '#f59e0b', 
+            fontSize: '0.875rem', 
+            fontWeight: '500',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer'
+          }}>
             View Issues →
           </button>
         </div>
         
         {/* SLA Compliance Card */}
-        <div className="bg-green-50 p-4 rounded-lg shadow hover:shadow-lg transition-all">
-          <div className="flex items-center mb-2">
-            <span className="text-green-500 mr-2">✅</span>
-            <h2 className="text-lg font-semibold">SLA Compliance</h2>
+        <div style={{ 
+          backgroundColor: '#ecfdf5', 
+          padding: '1rem', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ color: '#10b981', marginRight: '0.5rem' }}>✅</span>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Compliance</h2>
           </div>
-          <p className="text-3xl font-bold mb-2">{dashboardData.slaCompliance}%</p>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+            {dashboardData.slaCompliance}%
+          </p>
+          <div style={{ 
+            width: '100%', 
+            height: '0.5rem', 
+            backgroundColor: '#e5e7eb', 
+            borderRadius: '1rem',
+            marginTop: '0.5rem'
+          }}>
             <div 
-              className="bg-green-500 h-2 rounded-full" 
-              style={{ width: `${dashboardData.slaCompliance}%` }}
-            ></div>
+              style={{ 
+                width: `${dashboardData.slaCompliance}%`, 
+                height: '100%', 
+                backgroundColor: '#10b981', 
+                borderRadius: '1rem' 
+              }} 
+            />
           </div>
         </div>
       </div>
       
       {/* SLA Issues List */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">SLA Breaches & At-Risk Issues</h2>
+      <div style={{ 
+        backgroundColor: '#ffffff', 
+        borderRadius: '0.5rem', 
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ 
+          padding: '1rem', 
+          borderBottom: '1px solid #e5e7eb' 
+        }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Breaches & At-Risk Issues</h2>
         </div>
-        <div className="divide-y">
+        <div>
           {dashboardData.atRiskIssues.map((issue) => {
             const isBreached = issue.hoursRemaining <= 0;
-            const statusColor = isBreached ? 'text-red-500 bg-red-50' : 'text-yellow-500 bg-yellow-50';
+            const statusBgColor = isBreached ? '#fee2e2' : '#fef3c7';
+            const statusTextColor = isBreached ? '#ef4444' : '#f59e0b';
+            const priorityBgColor = issue.priority === 'P0' ? '#fee2e2' : '#fef3c7';
+            const priorityTextColor = issue.priority === 'P0' ? '#b91c1c' : '#b45309';
+            const severityBgColor = issue.severity === 'S0' ? 'transparent' : 'transparent';
+            const severityTextColor = issue.severity === 'S0' ? '#b91c1c' : '#b45309';
+            const severityBorderColor = issue.severity === 'S0' ? '#fca5a5' : '#fcd34d';
             
             return (
               <div 
                 key={issue.issueId}
-                className={`p-4 hover:bg-gray-50 ${isBreached ? 'bg-red-50' : ''}`}
+                style={{ 
+                  padding: '1rem', 
+                  borderBottom: '1px solid #e5e7eb',
+                  backgroundColor: isBreached ? '#fef2f2' : 'transparent',
+                  transition: 'background-color 0.2s'
+                }}
               >
-                <div className="flex justify-between">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <div>
-                    <div className="flex items-center">
-                      <h3 className="font-medium">{issue.title}</h3>
-                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${statusColor}`}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <h3 style={{ fontWeight: '500' }}>{issue.title}</h3>
+                      <span style={{ 
+                        marginLeft: '0.5rem', 
+                        padding: '0.25rem 0.5rem', 
+                        fontSize: '0.75rem', 
+                        borderRadius: '9999px',
+                        backgroundColor: statusBgColor,
+                        color: statusTextColor
+                      }}>
                         {isBreached ? "SLA Breached" : "SLA At Risk"}
                       </span>
                     </div>
-                    <div className="flex mt-1 text-sm text-gray-600">
-                      <span className={`mr-2 px-2 py-0.5 rounded ${issue.priority === 'P0' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    <div style={{ 
+                      display: 'flex', 
+                      marginTop: '0.25rem', 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563' 
+                    }}>
+                      <span style={{ 
+                        marginRight: '0.5rem', 
+                        padding: '0.125rem 0.5rem', 
+                        borderRadius: '0.25rem',
+                        backgroundColor: priorityBgColor,
+                        color: priorityTextColor
+                      }}>
                         {issue.priority}
                       </span>
-                      <span className={`mr-2 px-2 py-0.5 rounded border ${issue.severity === 'S0' ? 'border-red-300 text-red-800' : 'border-yellow-300 text-yellow-800'}`}>
+                      <span style={{ 
+                        marginRight: '0.5rem', 
+                        padding: '0.125rem 0.5rem', 
+                        borderRadius: '0.25rem',
+                        backgroundColor: severityBgColor,
+                        color: severityTextColor,
+                        border: `1px solid ${severityBorderColor}`
+                      }}>
                         {issue.severity}
                       </span>
                       <span>
@@ -269,7 +316,16 @@ const Dashboard = () => {
                       </span>
                     </div>
                   </div>
-                  <button className="text-blue-500">→</button>
+                  <button style={{ 
+                    color: '#3b82f6',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '1.25rem',
+                    cursor: 'pointer'
+                  }}>
+                    →
+                  </button>
                 </div>
               </div>
             );
@@ -277,74 +333,267 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Issues By Component Chart */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">Issues By Component</h2>
+      {/* Basic Charts Section - Simplified without external dependencies */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
+        {/* Basic Component Distribution */}
+        <div style={{ 
+          backgroundColor: '#ffffff', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
+        }}>
+          <div style={{ 
+            padding: '1rem', 
+            borderBottom: '1px solid #e5e7eb' 
+          }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Issues By Component</h2>
           </div>
-          <div className="p-4">
-            <IssuesByComponentChart data={dashboardData.issuesByComponent} />
+          <div style={{ padding: '1rem', textAlign: 'center' }}>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Simple Component Breakdown:</p>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.5rem',
+              maxWidth: '300px',
+              margin: '0 auto'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Frontend</span>
+                <div style={{ 
+                  width: '60%', 
+                  height: '1rem', 
+                  backgroundColor: '#3b82f6', 
+                  borderRadius: '0.25rem' 
+                }} />
+                <span>40%</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Backend</span>
+                <div style={{ 
+                  width: '45%', 
+                  height: '1rem', 
+                  backgroundColor: '#10b981', 
+                  borderRadius: '0.25rem' 
+                }} />
+                <span>30%</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Database</span>
+                <div style={{ 
+                  width: '30%', 
+                  height: '1rem', 
+                  backgroundColor: '#f59e0b', 
+                  borderRadius: '0.25rem' 
+                }} />
+                <span>20%</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Auth</span>
+                <div style={{ 
+                  width: '15%', 
+                  height: '1rem', 
+                  backgroundColor: '#ef4444', 
+                  borderRadius: '0.25rem' 
+                }} />
+                <span>10%</span>
+              </div>
+            </div>
           </div>
         </div>
         
-        {/* Issues By Priority Chart */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">Issues By Priority</h2>
+        {/* Basic Priority Distribution */}
+        <div style={{ 
+          backgroundColor: '#ffffff', 
+          borderRadius: '0.5rem', 
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
+        }}>
+          <div style={{ 
+            padding: '1rem', 
+            borderBottom: '1px solid #e5e7eb' 
+          }}>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Issues By Priority</h2>
           </div>
-          <div className="p-4">
-            <IssuesByPriorityChart data={dashboardData.issuesByPriority} />
+          <div style={{ padding: '1rem', textAlign: 'center' }}>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Priority Distribution:</p>
+            <div style={{ 
+              display: 'flex', 
+              height: '200px', 
+              padding: '0 2rem',
+              alignItems: 'flex-end',
+              justifyContent: 'space-around'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: '40px', 
+                  backgroundColor: '#ef4444', 
+                  borderRadius: '0.25rem 0.25rem 0 0' 
+                }} />
+                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P0</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: '70px', 
+                  backgroundColor: '#f59e0b', 
+                  borderRadius: '0.25rem 0.25rem 0 0' 
+                }} />
+                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P1</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: '120px', 
+                  backgroundColor: '#3b82f6', 
+                  borderRadius: '0.25rem 0.25rem 0 0' 
+                }} />
+                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P2</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: '160px', 
+                  backgroundColor: '#10b981', 
+                  borderRadius: '0.25rem 0.25rem 0 0' 
+                }} />
+                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P3</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
+                <div style={{ 
+                  width: '100%', 
+                  height: '60px', 
+                  backgroundColor: '#6b7280', 
+                  borderRadius: '0.25rem 0.25rem 0 0' 
+                }} />
+                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P4</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
-      {/* SLA Compliance Trend Chart */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">SLA Compliance Trend</h2>
+      {/* Simplified SLA Compliance Trend */}
+      <div style={{ 
+        backgroundColor: '#ffffff', 
+        borderRadius: '0.5rem', 
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ 
+          padding: '1rem', 
+          borderBottom: '1px solid #e5e7eb' 
+        }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Compliance Trend</h2>
         </div>
-        <div className="p-4" style={{ height: "300px" }}>
-          <ResponsiveContainerWrapper width="100%" height="100%">
-            <LineChartWrapper
-              width={500}
-              height={300}
-              data={dashboardData.complianceTrend}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGridWrapper strokeDasharray="3 3" />
-              <XAxisWrapper dataKey="month" />
-              <YAxisWrapper domain={[75, 95]} />
-              <TooltipWrapper />
-              <LegendWrapper />
-              <LineWrapper 
-                type="monotone" 
-                dataKey="value" 
-                name="SLA Compliance (%)"
-                stroke="#3b82f6" 
-                activeDot={{ r: 8 }} 
-                strokeWidth={2}
-              />
-              <LineWrapper 
-                type="monotone" 
-                dataKey={() => 90} 
-                stroke="#10b981" 
-                strokeDasharray="5 5" 
-                name="Target (90%)"
-                strokeWidth={2}
-              />
-            </LineChartWrapper>
-          </ResponsiveContainerWrapper>
+        <div style={{ padding: '1rem' }}>
+          <p style={{ color: '#6b7280', marginBottom: '1rem', textAlign: 'center' }}>
+            Recent compliance trend showing improvement over time
+          </p>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'flex-end',
+            height: '200px',
+            padding: '0 2rem',
+            borderBottom: '1px solid #e5e7eb',
+            borderLeft: '1px solid #e5e7eb',
+            position: 'relative'
+          }}>
+            {/* Target line */}
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: '10%',
+              borderTop: '2px dashed #10b981',
+              zIndex: 1
+            }}>
+              <span style={{ 
+                position: 'absolute', 
+                right: 0, 
+                top: -20, 
+                fontSize: '0.75rem',
+                color: '#10b981',
+                fontWeight: 'bold'
+              }}>
+                Target (90%)
+              </span>
+            </div>
+            
+            {/* Trend line points */}
+            <div style={{ 
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              width: '100%',
+              height: '100%',
+              position: 'relative'
+            }}>
+              {[82, 84, 86, 85, 88, 87.5].map((value, index) => (
+                <div 
+                  key={index} 
+                  style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center',
+                    width: '40px'
+                  }}
+                >
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: '#3b82f6',
+                    marginBottom: '4px',
+                    zIndex: 2,
+                    position: 'relative',
+                    bottom: `${value}%`
+                  }} />
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#6b7280',
+                    position: 'absolute',
+                    bottom: '-25px'
+                  }}>
+                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index]}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '2rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ 
+                width: '12px', 
+                height: '12px', 
+                borderRadius: '50%', 
+                backgroundColor: '#3b82f6',
+                marginRight: '0.5rem'
+              }} />
+              <span style={{ fontSize: '0.875rem' }}>SLA Compliance (%)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ 
+                width: '12px', 
+                height: '2px', 
+                backgroundColor: '#10b981', 
+                marginRight: '0.5rem',
+                borderBottom: '2px dashed #10b981'
+              }} />
+              <span style={{ fontSize: '0.875rem' }}>Target (90%)</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default SimpleDashboard;
