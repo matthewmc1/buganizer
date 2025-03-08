@@ -90,10 +90,29 @@ const Layout: React.FC = () => {
   };
 
   const handleLogoutConfirm = () => {
+    // Close the dialog first
     setLogoutDialogOpen(false);
-    logout();
-    // Force navigation to login page
-    navigate('/login', { replace: true });
+    
+    try {
+      // First logout to clear the auth state
+      logout();
+      
+      // Then force navigation to login
+      navigate('/login', { replace: true });
+      
+      // For extra certainty, we can add a small timeout and use window.location as fallback
+      // This ensures that even if navigate() doesn't work for some reason, the user is still redirected
+      setTimeout(() => {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      
+      // Force redirect even if there was an error in the logout process
+      window.location.href = '/login';
+    }
   };
   
   const drawerItems = [

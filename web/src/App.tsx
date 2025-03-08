@@ -177,30 +177,37 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={
-            isAuthenticated ? <Navigate to="/" /> : <Login />
-          } />
-          
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/issues" element={<IssueList />} />
-              <Route path="/issues/new" element={<CreateIssue />} />
-              <Route path="/issues/:id" element={<IssueDetail />} />
-              <Route path='/assignments' element={<AssignmentList />} />
-              <Route path='/assignments/:id' element={<AssignmentDetail />} />
-              <Route path='/assignments/new' element={<CreateAssignment />} />
-            </Route>
-          </Route>
-          
-          {/* 404 Not Found */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
+  <Routes>
+    {/* Public routes - redirect to dashboard if already authenticated */}
+    <Route path="/login" element={
+      isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+    } />
+    
+    {/* Protected routes - redirect to login if not authenticated */}
+    <Route element={
+      <ProtectedRoute 
+        isAuthenticated={isAuthenticated} 
+        loading={loading} 
+        redirectPath="/login" 
+      />
+    }>
+      <Route element={<Layout />}>
+        {/* Default route redirects to dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/issues" element={<IssueList />} />
+        <Route path="/issues/new" element={<CreateIssue />} />
+        <Route path="/issues/:id" element={<IssueDetail />} />
+        <Route path='/assignments' element={<AssignmentList />} />
+        <Route path='/assignments/:id' element={<AssignmentDetail />} />
+        <Route path='/assignments/new' element={<CreateAssignment />} />
+      </Route>
+    </Route>
+    
+    {/* 404 Not Found */}
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+</Router>
     </ThemeProvider>
   );
 };

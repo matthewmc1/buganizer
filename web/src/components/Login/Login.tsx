@@ -1,4 +1,5 @@
-// src/components/Login/Login.tsx
+// src/components/Login/Login.tsx - Full solution
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -57,12 +58,74 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
 
-  // Redirect to dashboard if already authenticated
+  // Handle redirection after successful authentication
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/issues', { replace: true });
+    console.log("Login component: Auth state changed", { 
+      isAuthenticated, 
+      loading, 
+      hasToken: !!localStorage.getItem('token') 
+    });
+    
+    // Check for authentication, ensuring we're not in a loading state
+    if (isAuthenticated && !loading) {
+      console.log("Login component: Authentication detected, preparing to redirect...");
+      
+      // Add a small delay to ensure state updates are fully processed
+      const redirectTimer = setTimeout(() => {
+        console.log("Login component: Executing navigation to dashboard");
+        
+        // Use replace: true to prevent back button returning to login
+        navigate('/dashboard', { replace: true });
+        
+        console.log("Login component: Navigation command issued");
+      }, 300); // Slightly longer delay for more reliability
+      
+      // Clean up timer if component unmounts
+      return () => clearTimeout(redirectTimer);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
+  
+  // Add a separate effect to check for token directly
+  // This is a fallback in case the auth state doesn't update properly
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    console.log("Login component: Token check", { hasToken: !!token });
+    
+    if (token && !isAuthenticated) {
+      console.log("Login component: Token exists but auth state not updated, manually forcing reload");
+      // Force a reload as a fallback (this ensures a clean state)
+      window.location.href = '/dashboard';
+    }
+  }, [isAuthenticated]);
+
+  const debugAuthState = () => {
+    const token = localStorage.getItem('token');
+    const userString = localStorage.getItem('user');
+    let user = null;
+    
+    try {
+      if (userString) {
+        user = JSON.parse(userString);
+      }
+    } catch (e) {
+      console.error("Failed to parse user data", e);
+    }
+    
+    console.log("=== Auth State Debug ===");
+    console.log("Local Storage:", { 
+      hasToken: !!token, 
+      tokenPrefix: token ? token.substring(0, 10) + '...' : null,
+      hasUser: !!user,
+      user: user ? `${user.name} (${user.email})` : null
+    });
+    console.log("Auth Context:", { 
+      isAuthenticated, 
+      loading, 
+      hasUser: !!user, 
+      error 
+    });
+    console.log("=== End Debug ===");
+  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -71,19 +134,29 @@ const Login: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log("Login component: Google login initiated");
       setLocalError(null);
+      
+      // Show loading indicator
+      setLocalLoading(true);
+      
       // In a real implementation, this would integrate with Google OAuth
       // For now, we'll just simulate it with a fake token
       await loginWithGoogle('fake_google_token');
-      navigate('/issues', { replace: true });
+      console.log("Login component: Google login successful");
+      
+      // Don't navigate here - let the useEffect handle it
+      // The redirection will happen automatically via useEffect
     } catch (err) {
+      console.error('Login component: Google login error:', err);
       setLocalError('Failed to log in with Google. Please try again.');
-      console.error('Google login error:', err);
+      setLocalLoading(false);
     }
   };
 
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Login component: Form submitted");
     
     // Simple validation
     if (!email) {
@@ -99,14 +172,17 @@ const Login: React.FC = () => {
     setLocalError(null);
     
     try {
+      console.log(`Login component: Logging in with email: ${email}`);
+      
       // Use the auth hook's loginWithCredentials method
       await loginWithCredentials(email, password);
-      // Successful login, navigate to issues dashboard
-      navigate('/issues', { replace: true });
+      console.log("Login component: Credentials accepted");
+      
+      // Don't navigate here - let the useEffect handle it
+      // The redirection will happen automatically via useEffect
     } catch (err) {
+      console.error('Login component: Login failed:', err);
       setLocalError('Login failed. Please check your credentials and try again.');
-      console.error('Local login error:', err);
-    } finally {
       setLocalLoading(false);
     }
   };
@@ -200,6 +276,13 @@ const Login: React.FC = () => {
                   Sign in to your account to continue
                 </Typography>
 
+                {/* Display authentication errors from useAuth */}
+                {error && (
+                  <Alert severity="error" sx={{ mb: 3 }}>
+                    {error}
+                  </Alert>
+                )}
+
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                   <Tabs 
                     value={tabValue} 
@@ -221,9 +304,9 @@ const Login: React.FC = () => {
 
                 {/* Google Login Tab */}
                 <TabPanel value={tabValue} index={0}>
-                  {(error || localError) && (
+                  {localError && (
                     <Alert severity="error" sx={{ mb: 3 }}>
-                      {error || localError}
+                      {localError}
                     </Alert>
                   )}
 
@@ -231,9 +314,9 @@ const Login: React.FC = () => {
                     variant="outlined"
                     size="large"
                     fullWidth
-                    startIcon={loading ? <CircularProgress size={20} /> : <GoogleIcon />}
+                    startIcon={localLoading || loading ? <CircularProgress size={20} /> : <GoogleIcon />}
                     onClick={handleGoogleLogin}
-                    disabled={loading}
+                    disabled={localLoading || loading}
                     sx={{ 
                       py: 1.5,
                       backgroundColor: 'white',
@@ -288,10 +371,10 @@ const Login: React.FC = () => {
                       size="large"
                       fullWidth
                       type="submit"
-                      disabled={localLoading}
+                      disabled={localLoading || loading}
                       sx={{ py: 1.5, mb: 2 }}
                     >
-                      {localLoading ? <CircularProgress size={24} /> : 'Sign In'}
+                      {localLoading || loading ? <CircularProgress size={24} /> : 'Sign In'}
                     </Button>
                   </form>
                   
