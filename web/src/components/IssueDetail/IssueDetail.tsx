@@ -27,6 +27,7 @@ import {
   Card,
   CardHeader,
   CardContent,
+  Chip,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -38,7 +39,8 @@ import {
   Link as LinkIcon,
   CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  PersonAdd as PersonAddIcon
+  PersonAdd as PersonAddIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -72,160 +74,13 @@ function TabPanel(props: TabPanelProps) {
       {...other}
     >
       {value === index && (
-        <TabPanel value={tabValue} index={0}>
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              multiline
-              minRows={3}
-              placeholder="Add a comment..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              InputProps={{
-                endAdornment: (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    endIcon={<SendIcon />}
-                    onClick={handleCommentSubmit}
-                    disabled={!commentText.trim()}
-                  >
-                    Comment
-                  </Button>
-                ),
-              }}
-            />
-          </Box>
-          
-          {commentsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : comments.length > 0 ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {comments.map((comment) => (
-                <CommentItem key={comment.id} comment={comment} />
-              ))}
-            </Box>
-          ) : (
-            <Typography color="textSecondary" align="center">
-              No comments yet. Be the first to comment!
-            </Typography>
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Upload Attachment
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<AttachFileIcon />}
-              >
-                Select File
-                <input
-                  type="file"
-                  hidden
-                  onChange={(e) => e.target.files && setAttachmentFile(e.target.files[0])}
-                />
-              </Button>
-              {attachmentFile && (
-                <>
-                  <Typography variant="body2">
-                    {attachmentFile.name} ({formatFileSize(attachmentFile.size)})
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAttachmentSubmit}
-                  >
-                    Upload
-                  </Button>
-                </>
-              )}
-            </Box>
-          </Box>
-          
-          {commentsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : attachments.length > 0 ? (
-            <Grid container spacing={2}>
-              {attachments.map((attachment) => (
-                <Grid item xs={12} sm={6} md={4} key={attachment.id}>
-                  <AttachmentItem attachment={attachment} />
-                </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <Typography color="textSecondary" align="center">
-              No attachments yet.
-            </Typography>
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={2}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <HistoryIcon sx={{ mr: 1 }} color="action" />
-            <Typography variant="subtitle1">
-              Issue History
-            </Typography>
-          </Box>
-          
-          {/* In a real app, we would fetch and display the issue history */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <HistoryItem
-              action="created"
-              user="John Doe"
-              timestamp={issue.createdAt}
-            />
-            {issue.assigneeId && (
-              <HistoryItem
-                action="assigned to"
-                target={issue.assigneeId /* Would show actual user name */}
-                user="Jane Smith"
-                timestamp={issue.updatedAt}
-              />
-            )}
-            <HistoryItem
-              action="changed status to"
-              target={issue.status}
-              user="Alice Johnson"
-              timestamp={issue.updatedAt}
-            />
-          </Box>
-        </TabPanel>
-      </Paper>
-      
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteClose}
-      >
-        <DialogTitle>Delete Issue</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this issue? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDeleteClose}>
-            Cancel
-          </Button>
-          <Button 
-            color="error" 
-            onClick={handleDeleteConfirm}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
   );
-};
+}
 
 interface CommentItemProps {
   comment: Comment;
@@ -289,14 +144,6 @@ const formatFileSize = (bytes: number): string => {
   
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
-
-export default IssueDetail;<Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
 
 const IssueDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -802,3 +649,159 @@ const IssueDetail: React.FC = () => {
           </Tabs>
         </Box>
         
+        <TabPanel value={tabValue} index={0}>
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="Add a comment..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    endIcon={<SendIcon />}
+                    onClick={handleCommentSubmit}
+                    disabled={!commentText.trim()}
+                  >
+                    Comment
+                  </Button>
+                ),
+              }}
+            />
+          </Box>
+          
+          {commentsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : comments.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {comments.map((comment) => (
+                <CommentItem key={comment.id} comment={comment} />
+              ))}
+            </Box>
+          ) : (
+            <Typography color="textSecondary" align="center">
+              No comments yet. Be the first to comment!
+            </Typography>
+          )}
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Upload Attachment
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<AttachFileIcon />}
+              >
+                Select File
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => e.target.files && setAttachmentFile(e.target.files[0])}
+                />
+              </Button>
+              {attachmentFile && (
+                <>
+                  <Typography variant="body2">
+                    {attachmentFile.name} ({formatFileSize(attachmentFile.size)})
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleAttachmentSubmit}
+                  >
+                    Upload
+                  </Button>
+                </>
+              )}
+            </Box>
+          </Box>
+          
+          {commentsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : attachments.length > 0 ? (
+            <Grid container spacing={2}>
+              {attachments.map((attachment) => (
+                <Grid item xs={12} sm={6} md={4} key={attachment.id}>
+                  <AttachmentItem attachment={attachment} />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Typography color="textSecondary" align="center">
+              No attachments yet.
+            </Typography>
+          )}
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+            <HistoryIcon sx={{ mr: 1 }} color="action" />
+            <Typography variant="subtitle1">
+              Issue History
+            </Typography>
+          </Box>
+          
+          {/* In a real app, we would fetch and display the issue history */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <HistoryItem
+              action="created"
+              user="John Doe"
+              timestamp={issue.createdAt}
+            />
+            {issue.assigneeId && (
+              <HistoryItem
+                action="assigned to"
+                target={issue.assigneeId /* Would show actual user name */}
+                user="Jane Smith"
+                timestamp={issue.updatedAt}
+              />
+            )}
+            <HistoryItem
+              action="changed status to"
+              target={issue.status}
+              user="Alice Johnson"
+              timestamp={issue.updatedAt}
+            />
+          </Box>
+        </TabPanel>
+      </Paper>
+      
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteClose}
+      >
+        <DialogTitle>Delete Issue</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this issue? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteClose}>
+            Cancel
+          </Button>
+          <Button 
+            color="error" 
+            onClick={handleDeleteConfirm}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default IssueDetail;
