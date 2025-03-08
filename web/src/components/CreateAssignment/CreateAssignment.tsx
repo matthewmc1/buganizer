@@ -35,7 +35,6 @@ import {
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 import { AssignmentStatus } from '../../types/assignments';
 import { Priority } from '../../types/issues';
@@ -469,7 +468,7 @@ const CreateAssignment: React.FC = () => {
             </Grid>
             
             <Grid item xs={12} sm={6} md={3}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <LocalizationProvider>
                 <DatePicker
                   label="Start Date"
                   value={new Date(formData.startDate)}
@@ -480,7 +479,7 @@ const CreateAssignment: React.FC = () => {
             </Grid>
             
             <Grid item xs={12} sm={6} md={3}>
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <LocalizationProvider>
                 <DatePicker
                   label="Target Date"
                   value={formData.targetDate ? new Date(formData.targetDate) : null}

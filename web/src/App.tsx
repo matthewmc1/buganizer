@@ -11,11 +11,14 @@ import IssueList from './components/IssueList/IssueList';
 import IssueDetail from './components/IssueDetail/IssueDetail';
 import CreateIssue from './components/CreateIssue/CreateIssue';
 import Login from './components/Login/Login';
+import AssignmentDetail from './components/AssignmentDetail/AssignmentDetail';
+import AssignmentList from './components/AssignmentList/AssignmentList';
 import NotFound from './components/NotFound/NotFound';
 
 // Auth
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
+import CreateAssignment from './components/CreateAssignment/CreateAssignment';
 
 const App: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -188,6 +191,9 @@ const App: React.FC = () => {
               <Route path="/issues" element={<IssueList />} />
               <Route path="/issues/new" element={<CreateIssue />} />
               <Route path="/issues/:id" element={<IssueDetail />} />
+              <Route path='/assignments' element={<AssignmentList />} />
+              <Route path='/assignments/:id' element={<AssignmentDetail />} />
+              <Route path='/assignments/new' element={<CreateAssignment />} />
             </Route>
           </Route>
           

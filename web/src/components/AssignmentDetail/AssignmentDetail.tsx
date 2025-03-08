@@ -110,18 +110,19 @@ const AssignmentDetail: React.FC = () => {
     assignment, 
     loading, 
     error, 
+    fetchAssignmentById, 
     deleteAssignment,
     assignmentIssues,
     loadingIssues,
     fetchAssignmentIssues
   } = useAssignments(id);
-
+  
   useEffect(() => {
     if (id) {
-      fetchAssignment();
-      fetchAssignmentIssues();
+      fetchAssignmentById(id);
+      fetchAssignmentIssues(id);
     }
-  }, [id, fetchAssignment, fetchAssignmentIssues]);
+  }, [id, fetchAssignmentById, fetchAssignmentIssues]);
 
   useEffect(() => {
     // Fetch SLA stats for this assignment when assignment is loaded
@@ -160,7 +161,7 @@ const AssignmentDetail: React.FC = () => {
     if (!id) return;
     
     try {
-      await deleteAssignment();
+      await deleteAssignment(id);
       setDeleteDialogOpen(false);
       navigate('/assignments');
     } catch (error) {
