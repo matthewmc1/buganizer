@@ -11,126 +11,163 @@ import (
 
 // SQL statements to create the initial schema
 const createTablesSQL = `
--- Users table
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    google_id TEXT UNIQUE,
-    avatar_url TEXT,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+-- Organizations table
+CREATE TABLE organizations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    domain VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Teams table
-CREATE TABLE IF NOT EXISTS teams (
-    id UUID PRIMARY KEY,
-    name TEXT NOT NULL,
+-- Organization settings
+CREATE TABLE organization_settings (
+    organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    allow_public_issues BOOLEAN DEFAULT false,
+    default_assignee_policy VARCHAR(50) DEFAULT 'MANUAL',
+    sla_enabled BOOLEAN DEFAULT true,
+    default_response_hours INTEGER DEFAULT 24,
+    default_resolution_hours INTEGER DEFAULT 72,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Users table with organization reference
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    avatar_url VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+-- Continuing the users table definition
+    UNIQUE(organization_id, email)
+);
+
+-- User roles table
+CREATE TABLE user_roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN', 'MANAGER', 'DEVELOPER', 'VIEWER')),
+    team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, organization_id, team_id) -- Prevent duplicate roles
+);
+
+-- Teams table with organization reference
+CREATE TABLE teams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    lead_id UUID REFERENCES users(id),
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    lead_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(organization_id, name)
 );
 
--- Team members mapping
-CREATE TABLE IF NOT EXISTS team_members (
-    team_id UUID REFERENCES teams(id),
-    user_id UUID REFERENCES users(id),
-    PRIMARY KEY (team_id, user_id)
-);
-
--- Components table
-CREATE TABLE IF NOT EXISTS components (
-    id UUID PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    owner_id UUID REFERENCES users(id),
-    team_id UUID REFERENCES teams(id),
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
--- Issues table
-CREATE TABLE IF NOT EXISTS issues (
-    id UUID PRIMARY KEY,
-    title TEXT NOT NULL,
+-- Issues table with organization reference
+CREATE TABLE issues (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
     description TEXT,
     reproduce_steps TEXT,
-    component_id UUID REFERENCES components(id),
-    reporter_id UUID REFERENCES users(id),
-    assignee_id UUID REFERENCES users(id),
-    priority TEXT NOT NULL,
-    severity TEXT NOT NULL,
-    status TEXT NOT NULL,
-    due_date TIMESTAMP,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    labels TEXT[]
+    component_id UUID REFERENCES components(id) ON DELETE SET NULL,
+    reporter_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    priority VARCHAR(5) NOT NULL CHECK (priority IN ('P0', 'P1', 'P2', 'P3', 'P4')),
+    severity VARCHAR(5) NOT NULL CHECK (severity IN ('S0', 'S1', 'S2', 'S3')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('NEW', 'ASSIGNED', 'IN_PROGRESS', 'FIXED', 'VERIFIED', 'CLOSED', 'DUPLICATE', 'WONT_FIX')),
+    due_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Comments table
-CREATE TABLE IF NOT EXISTS comments (
-    id UUID PRIMARY KEY,
-    issue_id UUID REFERENCES issues(id),
-    author_id UUID REFERENCES users(id),
+-- Comments table with organization reference
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE SET NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Attachments table
-CREATE TABLE IF NOT EXISTS attachments (
-    id UUID PRIMARY KEY,
-    issue_id UUID REFERENCES issues(id),
-    uploader_id UUID REFERENCES users(id),
-    filename TEXT NOT NULL,
-    file_url TEXT NOT NULL,
+-- Attachments table with organization reference
+CREATE TABLE attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    uploader_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    filename VARCHAR(255) NOT NULL,
+    file_url VARCHAR(255) NOT NULL,
     file_size BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Saved views table
-CREATE TABLE IF NOT EXISTS saved_views (
-    id UUID PRIMARY KEY,
-    name TEXT NOT NULL,
-    owner_id UUID REFERENCES users(id),
-    is_team_view BOOLEAN NOT NULL DEFAULT false,
-    team_id UUID REFERENCES teams(id),
-    query_string TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
--- Webhooks table
-CREATE TABLE IF NOT EXISTS webhooks (
-    id UUID PRIMARY KEY,
-    url TEXT NOT NULL,
+-- Components table with organization reference
+CREATE TABLE components (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
     description TEXT,
-    secret TEXT,
-    creator_id UUID REFERENCES users(id),
-    event_types TEXT[],
-    created_at TIMESTAMP NOT NULL,
-    last_called_at TIMESTAMP,
-    last_success BOOLEAN
+    owner_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(organization_id, name)
 );
 
--- Notification preferences table
-CREATE TABLE IF NOT EXISTS notification_preferences (
-    user_id UUID PRIMARY KEY REFERENCES users(id),
-    email_notifications BOOLEAN NOT NULL DEFAULT true,
-    slack_notifications BOOLEAN NOT NULL DEFAULT true,
-    subscribed_events TEXT[],
-    updated_at TIMESTAMP NOT NULL
+-- Assignments table with organization reference
+CREATE TABLE assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('PLANNING', 'IN_PROGRESS', 'TESTING', 'COMPLETED', 'CANCELLED')),
+    priority VARCHAR(5) NOT NULL CHECK (priority IN ('P0', 'P1', 'P2', 'P3', 'P4')),
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+    lead_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    target_date TIMESTAMP WITH TIME ZONE,
+    actual_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_issues_component_id ON issues(component_id);
-CREATE INDEX IF NOT EXISTS idx_issues_assignee_id ON issues(assignee_id);
-CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
-CREATE INDEX IF NOT EXISTS idx_issues_priority ON issues(priority);
-CREATE INDEX IF NOT EXISTS idx_issues_severity ON issues(severity);
-CREATE INDEX IF NOT EXISTS idx_comments_issue_id ON comments(issue_id);
-CREATE INDEX IF NOT EXISTS idx_attachments_issue_id ON attachments(issue_id);
+-- SLA configurations
+CREATE TABLE sla_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    component_id UUID REFERENCES components(id) ON DELETE CASCADE,
+    critical_response_time INTEGER NOT NULL DEFAULT 1, -- hours
+    high_response_time INTEGER NOT NULL DEFAULT 4,
+    medium_response_time INTEGER NOT NULL DEFAULT 8,
+    low_response_time INTEGER NOT NULL DEFAULT 24,
+    critical_resolution_time INTEGER NOT NULL DEFAULT 8, -- hours
+    high_resolution_time INTEGER NOT NULL DEFAULT 24,
+    medium_resolution_time INTEGER NOT NULL DEFAULT 72,
+    low_resolution_time INTEGER NOT NULL DEFAULT 168,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE(organization_id, component_id)
+);
+
+-- Add indexes for better query performance with tenant filtering
+CREATE INDEX idx_users_organization_id ON users(organization_id);
+CREATE INDEX idx_issues_organization_id ON issues(organization_id);
+CREATE INDEX idx_teams_organization_id ON teams(organization_id);
+CREATE INDEX idx_components_organization_id ON components(organization_id);
+CREATE INDEX idx_assignments_organization_id ON assignments(organization_id);
+CREATE INDEX idx_comments_organization_id ON comments(organization_id);
+CREATE INDEX idx_attachments_organization_id ON attachments(organization_id);
 `
 
 func main() {

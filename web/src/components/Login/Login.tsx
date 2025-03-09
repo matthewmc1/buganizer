@@ -1,5 +1,3 @@
-// src/components/Login/Login.tsx - Full solution
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -97,35 +95,6 @@ const Login: React.FC = () => {
       window.location.href = '/dashboard';
     }
   }, [isAuthenticated]);
-
-  const debugAuthState = () => {
-    const token = localStorage.getItem('token');
-    const userString = localStorage.getItem('user');
-    let user = null;
-    
-    try {
-      if (userString) {
-        user = JSON.parse(userString);
-      }
-    } catch (e) {
-      console.error("Failed to parse user data", e);
-    }
-    
-    console.log("=== Auth State Debug ===");
-    console.log("Local Storage:", { 
-      hasToken: !!token, 
-      tokenPrefix: token ? token.substring(0, 10) + '...' : null,
-      hasUser: !!user,
-      user: user ? `${user.name} (${user.email})` : null
-    });
-    console.log("Auth Context:", { 
-      isAuthenticated, 
-      loading, 
-      hasUser: !!user, 
-      error 
-    });
-    console.log("=== End Debug ===");
-  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

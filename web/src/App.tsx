@@ -19,6 +19,10 @@ import NotFound from './components/NotFound/NotFound';
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 import CreateAssignment from './components/CreateAssignment/CreateAssignment';
+import OrganizationSettings from './components/OrganizationSettings/OrganizationSettings';
+import RegisterOrganization from './components/RegisterOrganization/RegisterOrganization';
+import TeamsList from './components/TeamsList/TeamsList';
+import TeamDetail from './components/TeamDetail/TeamDetail';
 
 const App: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -177,37 +181,41 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-  <Routes>
-    {/* Public routes - redirect to dashboard if already authenticated */}
-    <Route path="/login" element={
-      isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
-    } />
-    
-    {/* Protected routes - redirect to login if not authenticated */}
-    <Route element={
-      <ProtectedRoute 
-        isAuthenticated={isAuthenticated} 
-        loading={loading} 
-        redirectPath="/login" 
-      />
-    }>
-      <Route element={<Layout />}>
-        {/* Default route redirects to dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/issues" element={<IssueList />} />
-        <Route path="/issues/new" element={<CreateIssue />} />
-        <Route path="/issues/:id" element={<IssueDetail />} />
-        <Route path='/assignments' element={<AssignmentList />} />
-        <Route path='/assignments/:id' element={<AssignmentDetail />} />
-        <Route path='/assignments/new' element={<CreateAssignment />} />
-      </Route>
-    </Route>
-    
-    {/* 404 Not Found */}
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-</Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+          } />
+          <Route path="/register" element={<RegisterOrganization />} />
+          
+          {/* Protected routes - must be authenticated */}
+          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated} loading={loading} />}>
+            <Route element={<Layout />}>
+              {/* Default route */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              
+              {/* Main routes */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/issues" element={<IssueList />} />
+              <Route path="/issues/new" element={<CreateIssue />} />
+              <Route path="/issues/:id" element={<IssueDetail />} />
+              <Route path='/assignments' element={<AssignmentList />} />
+              <Route path='/assignments/:id' element={<AssignmentDetail />} />
+              <Route path='/assignments/new' element={<CreateAssignment />} />
+              
+              {/* Organization management */}
+              <Route path='/settings/organization' element={<OrganizationSettings />} />
+              
+              {/* Team management */}
+              <Route path='/teams' element={<TeamsList />} />
+              <Route path='/teams/:id' element={<TeamDetail />} />
+            </Route>
+          </Route>
+          
+          {/* 404 Not Found */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
     </ThemeProvider>
   );
 };
