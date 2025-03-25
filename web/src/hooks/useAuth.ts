@@ -5,7 +5,7 @@ import { User } from '../types/users';
 import { Organization } from '../types/organization';
 import { PERMISSION_MATRIX, Role, UserRole } from '../types/permissions';
 import api from '../utils/api';
-import { mock } from 'node:test';
+import { mockAuth } from '../utils/mockApi';
 
 interface AuthState {
   user: User | null;
@@ -47,23 +47,20 @@ export const useAuth = () => {
     setAuthState(prev => ({ ...prev, loading: true }));
 
     try {
-      // Get user info
-      const userResponse = await api.auth.getCurrentUser();
-      const user = userResponse.data;
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Get organization info
-      const orgResponse = await api.organizations.getOrganization(user.organizationId);
-      const organization = orgResponse.data;
+      // Use mock data - note we're not passing token now
+      const user = mockAuth.getCurrentUser();
       
-      // Get user roles
-      const rolesResponse = await api.users.getUserRoles(user.id, organization.id);
-      const userRoles = rolesResponse.data;
+      // Get organization and roles from our mock API
+      const { organization, roles } = mockAuth.login(user.email, 'password');
 
       setAuthState({
         user,
         token: authState.token,
         organization,
-        userRoles,
+        userRoles: roles,
         isAuthenticated: true,
         loading: false,
         error: null,
@@ -88,53 +85,32 @@ export const useAuth = () => {
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
   
     try {
-      // In a real implementation, this would call your API
-      // For demo purposes, we'll simulate a successful login
-      if (googleToken === 'fake_google_token') {
-        // Simulate API response
-        const mockToken = 'mock_jwt_token';
-        const mockUser: User = {
-          id: '1',
-          name: 'Demo User',
-          email: 'demo@example.com',
-          googleId: '123',
-          avatarUrl: 'https://via.placeholder.com/150',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-  
-        // First, update local storage
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        
-        // Set auth header for future requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
-        const response = await api.auth.login(mockUser.email, "");
-        const { token, user, organization, roles } = response.data;
-        
-        // Finally, update auth state - this should trigger redirects via useEffect in components
-              // Update auth state
-              setAuthState({
-                user,
-                token,
-                organization,
-                userRoles: roles,
-                isAuthenticated: true,
-                loading: false,
-                error: null,
-              });
-        
-        console.log('Login successful, auth state updated');
-        return mockUser;
-      }
-  
-      // Real implementation with API would go here
-      throw new Error('Invalid token');
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Use our mock API with properly typed data
+      const { token, user, organization, roles } = mockAuth.googleLogin(googleToken);
+      
+      // Store auth data
+      localStorage.setItem('token', token);
+      
+      // Update auth state
+      setAuthState({
+        user,
+        token,
+        organization,
+        userRoles: roles,
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      });
+      
+      return user;
     } catch (err) {
       setAuthState(prev => ({
         ...prev,
         loading: false,
-        error: 'Login failed. Please try again.',
+        error: 'Google login failed. Please try again.',
       }));
       throw err;
     }
@@ -151,15 +127,14 @@ export const useAuth = () => {
     }));
 
     try {
-      // Call login API
-      const response = await api.auth.login(email, password);
-      const { token, user, organization, roles } = response.data;
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Use our mock API with properly typed data
+      const { token, user, organization, roles } = mockAuth.login(email, password);
       
       // Store auth data
       localStorage.setItem('token', token);
-      
-      // Update axios headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Update auth state
       setAuthState({
@@ -189,7 +164,7 @@ export const useAuth = () => {
         userRoles: [],
         isAuthenticated: false,
         loading: false,
-        error: 'Login failed. Please try again.'
+        error: 'Login failed. Please check your credentials and try again.'
       }));
       
       throw err;
@@ -223,12 +198,8 @@ export const useAuth = () => {
       error: null,
     });
     
-    // Optionally call logout API endpoint
-    try {
-      api.auth.logout();
-    } catch (error) {
-      console.error('Error logging out on server:', error);
-    }
+    // We won't call the API since we're using mock data
+    console.log('User logged out');
   }, []);
 
   // Check if user has permission for an action

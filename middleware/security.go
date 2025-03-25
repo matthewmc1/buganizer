@@ -4,8 +4,10 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/matthewmc1/buganizer/models"
 	"github.com/matthewmc1/buganizer/services/auth"
@@ -23,14 +25,14 @@ const (
 func SecurityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract and validate JWT token
-		token := extractTokenFromHeader(r)
+		token, err := extractTokenFromHeader(r)
 		if token == "" {
 			http.Error(w, "Unauthorized: Missing authentication token", http.StatusUnauthorized)
 			return
 		}
 
 		// Validate token and extract claims
-		claims, err := auth.ValidateToken(token)
+		claims, err := auth.ValidateToken()VerifyToken(token)
 		if err != nil {
 			http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
 			return
@@ -82,6 +84,22 @@ func PermissionMiddleware(resource string, action string) func(http.Handler) htt
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// Add this function to your middleware/security.go
+func extractTokenFromHeader(r *http.Request) (string, error) {
+	bearToken := r.Header.Get("Authorization")
+	if bearToken == "" {
+		return "", errors.New("authorization header is required")
+	}
+
+	// Check if the token is in the format "Bearer {token}"
+	strArr := strings.Split(bearToken, " ")
+	if len(strArr) != 2 {
+		return "", errors.New("invalid token format")
+	}
+
+	return strArr[1], nil
 }
 
 // CheckPermission verifies if a user has a specific permission

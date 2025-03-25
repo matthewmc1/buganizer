@@ -114,7 +114,7 @@ func (interceptor *AuthInterceptor) authenticate(ctx context.Context) (string, e
 	}
 
 	tokenString := strings.TrimPrefix(accessToken, "Bearer ")
-	claims, err := interceptor.verifyToken(tokenString)
+	claims, err := interceptor.VerifyToken(tokenString)
 	if err != nil {
 		return "", status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
@@ -123,7 +123,7 @@ func (interceptor *AuthInterceptor) authenticate(ctx context.Context) (string, e
 }
 
 // verifyToken verifies the JWT token
-func (interceptor *AuthInterceptor) verifyToken(tokenString string) (*auth.JWTClaims, error) {
+func (interceptor *AuthInterceptor) VerifyToken(tokenString string) (*auth.JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&auth.JWTClaims{},

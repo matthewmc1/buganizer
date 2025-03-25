@@ -1,599 +1,692 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Paper, 
+  Card, 
+  CardContent, 
+  Chip,
+  Button, 
+  CircularProgress,
+  Divider,
+  LinearProgress,
+  IconButton,
+  useTheme,
+  alpha,
+  List,
+  ListItem,
+  ListItemText,
+  Avatar,
+  Stack
+} from '@mui/material';
+import { 
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  ArrowForward as ArrowForwardIcon,
+  MoreVert as MoreVertIcon,
+  BugReport as BugReportIcon,
+  Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
+  AccessTime as AccessTimeIcon
+} from '@mui/icons-material';
+import { useSLA } from '../../hooks/useSLA';
+import { useIssues } from '../../hooks/useIssues';
+import { useAssignments } from '../../hooks/useAssignments';
+import PriorityChip from '../PriorityChip/PriorityChip';
+import IssueStatusChip from '../IssueStatusChip/IssueStatusChip';
+import { Link, useNavigate } from 'react-router-dom';
 
-// Define types for our data
-interface AtRiskIssue {
-  issueId: string;
+// Define types for the dashboard data
+interface DashboardMetrics {
+  currentComplianceRate: number;
+  complianceTrend: Array<{ date: string; value: number }>;
+  atRiskCount: number;
+  breachedThisWeek: number;
+  averageResolutionTime: {
+    P0: number;
+    P1: number;
+    P2: number;
+    P3: number;
+    P4: number;
+  };
+}
+
+// Simple Chart component props
+interface SimpleChartProps {
+  data: number[];
+  color: string;
+}
+
+// Simple Chart component using divs
+const SimpleChart: React.FC<SimpleChartProps> = ({ data, color }) => {
+  const max = Math.max(...data);
+  
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-end', height: 40, gap: 0.5 }}>
+      {data.map((value: number, i: number) => (
+        <Box 
+          key={i} 
+          sx={{ 
+            width: '8px', 
+            height: `${(value / max) * 100}%`, 
+            backgroundColor: color,
+            borderRadius: '2px',
+            transition: 'height 0.3s ease'
+          }}
+        />
+      ))}
+    </Box>
+  );
+};
+
+// MetricCard props interface
+interface MetricCardProps {
   title: string;
-  priority: string;
-  severity: string;
-  hoursRemaining: number;
-  dueDate: string;
+  value: string | number;
+  change?: string;
+  changeType?: 'up' | 'down';
+  icon: ReactNode;
+  color: string;
+  onClick?: () => void;
+  children?: ReactNode;
 }
 
-interface DashboardData {
-  openIssues: number;
-  slaBreaches: number;
-  slaAtRisk: number;
-  slaCompliance: number;
-  atRiskIssues: AtRiskIssue[];
-}
+// Card with header and action
+const MetricCard: React.FC<MetricCardProps> = ({ 
+  title, 
+  value, 
+  change, 
+  changeType = 'up', 
+  icon, 
+  color, 
+  onClick, 
+  children 
+}) => {
+  const theme = useTheme();
+  const isPositive = changeType === 'up';
+  const changeColor = isPositive ? theme.palette.success.main : theme.palette.error.main;
+  
+  return (
+    <Card 
+      elevation={0} 
+      sx={{ 
+        height: '100%',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2, 
+        p: 0,
+        transition: 'all 0.2s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
+          transform: 'translateY(-2px)'
+        }
+      }}
+    >
+      <CardContent sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ 
+              width: 40, 
+              height: 40, 
+              borderRadius: 2, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              backgroundColor: alpha(color, 0.1),
+              color: color
+            }}>
+              {icon}
+            </Box>
+            <Typography variant="subtitle2" color="text.secondary" fontWeight={500}>
+              {title}
+            </Typography>
+          </Box>
+          {onClick && (
+            <IconButton size="small" onClick={onClick}>
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
+        
+        <Box sx={{ mt: 1, mb: 1 }}>
+          <Typography variant="h4" fontWeight={600} gutterBottom>
+            {value}
+          </Typography>
+          
+          {change && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {isPositive ? 
+                <TrendingUpIcon sx={{ color: changeColor, fontSize: 16 }} /> : 
+                <TrendingDownIcon sx={{ color: changeColor, fontSize: 16 }} />
+              }
+              <Typography variant="caption" fontWeight={500} sx={{ color: changeColor }}>
+                {change}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+        
+        <Box sx={{ flexGrow: 1, mt: 1 }}>
+          {children}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+};
 
-// Sample mock data for the dashboard
-const sampleData: DashboardData = {
-  openIssues: 12,
-  slaBreaches: 2,
-  slaAtRisk: 3,
-  slaCompliance: 87.5,
-  atRiskIssues: [
+const ModernDashboard: React.FC = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
+  
+  const { getDashboardMetrics } = useSLA();
+  const { issues } = useIssues({ initialFilter: 'assignee:me status:open' });
+  const { assignments } = useAssignments();
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const metrics = await getDashboardMetrics();
+        setDashboardData(metrics as DashboardMetrics);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [getDashboardMetrics]);
+
+  // Define type for SLA at risk issues
+  interface AtRiskIssue {
+    id: string;
+    title: string;
+    priority: string;
+    severity: string;
+    hoursRemaining: number;
+    status: string;
+  }
+  
+  // Sample SLA at risk issues
+  const atRiskIssues: AtRiskIssue[] = [
     {
-      issueId: 'ISSUE-123',
+      id: 'ISSUE-123',
       title: 'API Authentication Failure',
       priority: 'P0',
       severity: 'S0',
-      hoursRemaining: -2.5, // negative means breached
-      dueDate: new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString()
+      hoursRemaining: -2.5,
+      status: 'IN_PROGRESS'
     },
     {
-      issueId: 'ISSUE-145',
+      id: 'ISSUE-145',
       title: 'Database Connection Timeout',
       priority: 'P1',
       severity: 'S1',
-      hoursRemaining: -0.5,
-      dueDate: new Date(Date.now() - 0.5 * 60 * 60 * 1000).toISOString()
+      hoursRemaining: 1.5,
+      status: 'ASSIGNED'
     },
     {
-      issueId: 'ISSUE-156',
+      id: 'ISSUE-156',
       title: 'Frontend Components Not Loading',
       priority: 'P1',
       severity: 'S2',
       hoursRemaining: 3.2,
-      dueDate: new Date(Date.now() + 3.2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      issueId: 'ISSUE-158',
-      title: 'Payment Processing Error',
-      priority: 'P2',
-      severity: 'S1',
-      hoursRemaining: 5.7,
-      dueDate: new Date(Date.now() + 5.7 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      issueId: 'ISSUE-160',
-      title: 'User Session Expiration Bug',
-      priority: 'P2',
-      severity: 'S2',
-      hoursRemaining: 7.5,
-      dueDate: new Date(Date.now() + 7.5 * 60 * 60 * 1000).toISOString()
+      status: 'IN_PROGRESS'
     }
-  ]
-};
-
-// Simple Dashboard component without external dependencies
-const SimpleDashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-
-  // Simulate data loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDashboardData(sampleData);
-      setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (loading || !dashboardData) {
+  ];
+  
+  if (loading) {
     return (
-      <div style={{ padding: '1rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>Dashboard</h1>
-        <div style={{ width: '100%', height: '0.5rem', backgroundColor: '#e6f2ff', borderRadius: '0.25rem' }}>
-          <div 
-            style={{ 
-              width: '33%', 
-              height: '100%', 
-              backgroundColor: '#3b82f6', 
-              borderRadius: '0.25rem',
-              animation: 'pulse 1.5s infinite'
-            }} 
-          />
-        </div>
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `}</style>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
-
+  
   return (
-    <div style={{ padding: '1rem' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Dashboard</h1>
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight={700} gutterBottom>Dashboard</Typography>
+        <Typography variant="body1" color="text.secondary">
+          Welcome back! Here's an overview of your bug tracking activity.
+        </Typography>
+      </Box>
       
-      {/* Summary Cards Section */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-        gap: '1rem', 
-        marginBottom: '1.5rem' 
-      }}>
-        {/* Open Issues Card */}
-        <div style={{ 
-          backgroundColor: '#e6f2ff', 
-          padding: '1rem', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          transition: 'transform 0.2s, box-shadow 0.2s'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#3b82f6', marginRight: '0.5rem' }}>📋</span>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>My Open Issues</h2>
-          </div>
-          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            {dashboardData.openIssues}
-          </p>
-          <button style={{ 
-            color: '#3b82f6', 
-            fontSize: '0.875rem', 
-            fontWeight: '500',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer'
-          }}>
-            View All →
-          </button>
-        </div>
-        
-        {/* SLA Breaches Card */}
-        <div style={{ 
-          backgroundColor: '#fee2e2', 
-          padding: '1rem', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#ef4444', marginRight: '0.5rem' }}>🚨</span>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Breaches</h2>
-          </div>
-          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            {dashboardData.slaBreaches}
-          </p>
-          <button style={{ 
-            color: '#ef4444', 
-            fontSize: '0.875rem', 
-            fontWeight: '500',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer'
-          }}>
-            Resolve Now →
-          </button>
-        </div>
-        
-        {/* At Risk Card */}
-        <div style={{ 
-          backgroundColor: '#fef3c7', 
-          padding: '1rem', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#f59e0b', marginRight: '0.5rem' }}>⚠️</span>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>At Risk</h2>
-          </div>
-          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            {dashboardData.slaAtRisk}
-          </p>
-          <button style={{ 
-            color: '#f59e0b', 
-            fontSize: '0.875rem', 
-            fontWeight: '500',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer'
-          }}>
-            View Issues →
-          </button>
-        </div>
-        
-        {/* SLA Compliance Card */}
-        <div style={{ 
-          backgroundColor: '#ecfdf5', 
-          padding: '1rem', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ color: '#10b981', marginRight: '0.5rem' }}>✅</span>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Compliance</h2>
-          </div>
-          <p style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            {dashboardData.slaCompliance}%
-          </p>
-          <div style={{ 
-            width: '100%', 
-            height: '0.5rem', 
-            backgroundColor: '#e5e7eb', 
-            borderRadius: '1rem',
-            marginTop: '0.5rem'
-          }}>
-            <div 
-              style={{ 
-                width: `${dashboardData.slaCompliance}%`, 
-                height: '100%', 
-                backgroundColor: '#10b981', 
-                borderRadius: '1rem' 
-              }} 
+      {/* Key Metrics */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <MetricCard
+            title="Open Issues"
+            value={issues.length}
+            change="+5% from last week"
+            icon={<BugReportIcon />}
+            color={theme.palette.primary.main}
+            onClick={() => navigate('/issues?filter=status:open')}
+          >
+            <SimpleChart 
+              data={[8, 12, 10, 14, 15, 18, 20]} 
+              color={theme.palette.primary.main} 
             />
-          </div>
-        </div>
-      </div>
-      
-      {/* SLA Issues List */}
-      <div style={{ 
-        backgroundColor: '#ffffff', 
-        borderRadius: '0.5rem', 
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ 
-          padding: '1rem', 
-          borderBottom: '1px solid #e5e7eb' 
-        }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Breaches & At-Risk Issues</h2>
-        </div>
-        <div>
-          {dashboardData.atRiskIssues.map((issue) => {
-            const isBreached = issue.hoursRemaining <= 0;
-            const statusBgColor = isBreached ? '#fee2e2' : '#fef3c7';
-            const statusTextColor = isBreached ? '#ef4444' : '#f59e0b';
-            const priorityBgColor = issue.priority === 'P0' ? '#fee2e2' : '#fef3c7';
-            const priorityTextColor = issue.priority === 'P0' ? '#b91c1c' : '#b45309';
-            const severityBgColor = issue.severity === 'S0' ? 'transparent' : 'transparent';
-            const severityTextColor = issue.severity === 'S0' ? '#b91c1c' : '#b45309';
-            const severityBorderColor = issue.severity === 'S0' ? '#fca5a5' : '#fcd34d';
-            
-            return (
-              <div 
-                key={issue.issueId}
-                style={{ 
-                  padding: '1rem', 
-                  borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: isBreached ? '#fef2f2' : 'transparent',
-                  transition: 'background-color 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <h3 style={{ fontWeight: '500' }}>{issue.title}</h3>
-                      <span style={{ 
-                        marginLeft: '0.5rem', 
-                        padding: '0.25rem 0.5rem', 
-                        fontSize: '0.75rem', 
-                        borderRadius: '9999px',
-                        backgroundColor: statusBgColor,
-                        color: statusTextColor
-                      }}>
-                        {isBreached ? "SLA Breached" : "SLA At Risk"}
-                      </span>
-                    </div>
-                    <div style={{ 
-                      display: 'flex', 
-                      marginTop: '0.25rem', 
-                      fontSize: '0.875rem', 
-                      color: '#4b5563' 
-                    }}>
-                      <span style={{ 
-                        marginRight: '0.5rem', 
-                        padding: '0.125rem 0.5rem', 
-                        borderRadius: '0.25rem',
-                        backgroundColor: priorityBgColor,
-                        color: priorityTextColor
-                      }}>
-                        {issue.priority}
-                      </span>
-                      <span style={{ 
-                        marginRight: '0.5rem', 
-                        padding: '0.125rem 0.5rem', 
-                        borderRadius: '0.25rem',
-                        backgroundColor: severityBgColor,
-                        color: severityTextColor,
-                        border: `1px solid ${severityBorderColor}`
-                      }}>
-                        {issue.severity}
-                      </span>
-                      <span>
-                        {isBreached
-                          ? `Breached ${Math.abs(issue.hoursRemaining).toFixed(1)} hours ago`
-                          : `Due in ${issue.hoursRemaining.toFixed(1)} hours`
-                        }
-                      </span>
-                    </div>
-                  </div>
-                  <button style={{ 
-                    color: '#3b82f6',
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    fontSize: '1.25rem',
-                    cursor: 'pointer'
-                  }}>
-                    →
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Basic Charts Section - Simplified without external dependencies */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-        gap: '1rem', 
-        marginBottom: '1.5rem' 
-      }}>
-        {/* Basic Component Distribution */}
-        <div style={{ 
-          backgroundColor: '#ffffff', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
-        }}>
-          <div style={{ 
-            padding: '1rem', 
-            borderBottom: '1px solid #e5e7eb' 
-          }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Issues By Component</h2>
-          </div>
-          <div style={{ padding: '1rem', textAlign: 'center' }}>
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Simple Component Breakdown:</p>
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '0.5rem',
-              maxWidth: '300px',
-              margin: '0 auto'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Frontend</span>
-                <div style={{ 
-                  width: '60%', 
-                  height: '1rem', 
-                  backgroundColor: '#3b82f6', 
-                  borderRadius: '0.25rem' 
-                }} />
-                <span>40%</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Backend</span>
-                <div style={{ 
-                  width: '45%', 
-                  height: '1rem', 
-                  backgroundColor: '#10b981', 
-                  borderRadius: '0.25rem' 
-                }} />
-                <span>30%</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Database</span>
-                <div style={{ 
-                  width: '30%', 
-                  height: '1rem', 
-                  backgroundColor: '#f59e0b', 
-                  borderRadius: '0.25rem' 
-                }} />
-                <span>20%</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Auth</span>
-                <div style={{ 
-                  width: '15%', 
-                  height: '1rem', 
-                  backgroundColor: '#ef4444', 
-                  borderRadius: '0.25rem' 
-                }} />
-                <span>10%</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          </MetricCard>
+        </Grid>
         
-        {/* Basic Priority Distribution */}
-        <div style={{ 
-          backgroundColor: '#ffffff', 
-          borderRadius: '0.5rem', 
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' 
-        }}>
-          <div style={{ 
-            padding: '1rem', 
-            borderBottom: '1px solid #e5e7eb' 
-          }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>Issues By Priority</h2>
-          </div>
-          <div style={{ padding: '1rem', textAlign: 'center' }}>
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Priority Distribution:</p>
-            <div style={{ 
+        <Grid item xs={12} sm={6} lg={3}>
+          <MetricCard
+            title="SLA Compliance"
+            value={`${dashboardData?.currentComplianceRate || 87}%`}
+            change="↑ 2.5% this month"
+            changeType="up"
+            icon={<CheckCircleIcon />}
+            color={theme.palette.success.main}
+            onClick={() => navigate('/reports/sla')}
+          >
+            <SimpleChart 
+              data={dashboardData?.complianceTrend?.map((d) => d.value) || [82, 84, 86, 85, 87, 89]} 
+              color={theme.palette.success.main} 
+            />
+          </MetricCard>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} lg={3}>
+          <MetricCard
+            title="At Risk"
+            value={dashboardData?.atRiskCount || 3}
+            change="↓ 2 from yesterday"
+            changeType="down"
+            icon={<WarningIcon />}
+            color={theme.palette.warning.main}
+            onClick={() => navigate('/issues?filter=sla:atrisk')}
+          >
+            <Box sx={{ mt: 1 }}>
+              <LinearProgress 
+                variant="determinate" 
+                value={30} 
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  backgroundColor: alpha(theme.palette.warning.main, 0.2),
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: theme.palette.warning.main
+                  }
+                }} 
+              />
+            </Box>
+          </MetricCard>
+        </Grid>
+        
+        <Grid item xs={12} sm={6} lg={3}>
+          <MetricCard
+            title="Avg. Resolution Time"
+            value="18.5h"
+            change="↓ 2.3h this month"
+            changeType="down"
+            icon={<AccessTimeIcon />}
+            color={theme.palette.info.main}
+            onClick={() => navigate('/reports/resolution-time')}
+          >
+            <Box sx={{ 
               display: 'flex', 
-              height: '200px', 
-              padding: '0 2rem',
-              alignItems: 'flex-end',
-              justifyContent: 'space-around'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: '40px', 
-                  backgroundColor: '#ef4444', 
-                  borderRadius: '0.25rem 0.25rem 0 0' 
-                }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P0</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: '70px', 
-                  backgroundColor: '#f59e0b', 
-                  borderRadius: '0.25rem 0.25rem 0 0' 
-                }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P1</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: '120px', 
-                  backgroundColor: '#3b82f6', 
-                  borderRadius: '0.25rem 0.25rem 0 0' 
-                }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P2</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: '160px', 
-                  backgroundColor: '#10b981', 
-                  borderRadius: '0.25rem 0.25rem 0 0' 
-                }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P3</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '50px' }}>
-                <div style={{ 
-                  width: '100%', 
-                  height: '60px', 
-                  backgroundColor: '#6b7280', 
-                  borderRadius: '0.25rem 0.25rem 0 0' 
-                }} />
-                <span style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>P4</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Simplified SLA Compliance Trend */}
-      <div style={{ 
-        backgroundColor: '#ffffff', 
-        borderRadius: '0.5rem', 
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ 
-          padding: '1rem', 
-          borderBottom: '1px solid #e5e7eb' 
-        }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: '600' }}>SLA Compliance Trend</h2>
-        </div>
-        <div style={{ padding: '1rem' }}>
-          <p style={{ color: '#6b7280', marginBottom: '1rem', textAlign: 'center' }}>
-            Recent compliance trend showing improvement over time
-          </p>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'flex-end',
-            height: '200px',
-            padding: '0 2rem',
-            borderBottom: '1px solid #e5e7eb',
-            borderLeft: '1px solid #e5e7eb',
-            position: 'relative'
-          }}>
-            {/* Target line */}
-            <div style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: '10%',
-              borderTop: '2px dashed #10b981',
-              zIndex: 1
-            }}>
-              <span style={{ 
-                position: 'absolute', 
-                right: 0, 
-                top: -20, 
-                fontSize: '0.75rem',
-                color: '#10b981',
-                fontWeight: 'bold'
-              }}>
-                Target (90%)
-              </span>
-            </div>
-            
-            {/* Trend line points */}
-            <div style={{ 
-              display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-end',
-              width: '100%',
-              height: '100%',
-              position: 'relative'
+              mt: 1
             }}>
-              {[82, 84, 86, 85, 88, 87.5].map((value, index) => (
-                <div 
-                  key={index} 
-                  style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    width: '40px'
+              <Box>
+                <Typography variant="caption" color="text.secondary">P0</Typography>
+                <Typography variant="body2" fontWeight={600}>3.2h</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">P1</Typography>
+                <Typography variant="body2" fontWeight={600}>18.5h</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary">P2</Typography>
+                <Typography variant="body2" fontWeight={600}>65.3h</Typography>
+              </Box>
+            </Box>
+          </MetricCard>
+        </Grid>
+      </Grid>
+      
+      {/* Main Content */}
+      <Grid container spacing={3}>
+        <Grid item xs={12} lg={8}>
+          <Card 
+            elevation={0} 
+            sx={{ 
+              mb: 3, 
+              overflow: 'hidden',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ 
+              px: 3, 
+              py: 2, 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}>
+              <Typography variant="h6" fontWeight={600}>SLA At Risk</Typography>
+              <Button 
+                endIcon={<ArrowForwardIcon />} 
+                component={Link}
+                to="/issues?filter=sla:atrisk"
+                sx={{ textTransform: 'none' }}
+              >
+                View All
+              </Button>
+            </Box>
+            
+            <Box>
+              {atRiskIssues.map((issue, index) => (
+                <Box 
+                  key={issue.id}
+                  sx={{
+                    px: 3,
+                    py: 2,
+                    borderBottom: index < atRiskIssues.length - 1 ? '1px solid' : 'none',
+                    borderColor: 'divider',
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      cursor: 'pointer'
+                    }
                   }}
+                  onClick={() => navigate(`/issues/${issue.id}`)}
                 >
-                  <div style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    backgroundColor: '#3b82f6',
-                    marginBottom: '4px',
-                    zIndex: 2,
-                    position: 'relative',
-                    bottom: `${value}%`
-                  }} />
-                  <span style={{ 
-                    fontSize: '0.75rem', 
-                    color: '#6b7280',
-                    position: 'absolute',
-                    bottom: '-25px'
-                  }}>
-                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][index]}
-                  </span>
-                </div>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={500}>
+                        {issue.title}
+                      </Typography>
+                      <Chip 
+                        label={issue.id} 
+                        size="small" 
+                        sx={{ 
+                          fontFamily: 'monospace', 
+                          fontWeight: 600,
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                          color: theme.palette.primary.main
+                        }} 
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ 
+                        px: 1.5, 
+                        py: 0.5, 
+                        borderRadius: 1,
+                        backgroundColor: issue.hoursRemaining < 0 
+                          ? alpha(theme.palette.error.main, 0.1)
+                          : alpha(theme.palette.warning.main, 0.1),
+                        color: issue.hoursRemaining < 0
+                          ? theme.palette.error.main
+                          : theme.palette.warning.main
+                      }}>
+                        <Typography variant="caption" fontWeight={600}>
+                          {issue.hoursRemaining < 0 
+                            ? `Breached ${Math.abs(issue.hoursRemaining).toFixed(1)}h ago` 
+                            : `Due in ${issue.hoursRemaining.toFixed(1)}h`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <PriorityChip priority={issue.priority} />
+                    <IssueStatusChip status={issue.status} />
+                  </Box>
+                </Box>
               ))}
-            </div>
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginTop: '2rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ 
-                width: '12px', 
-                height: '12px', 
-                borderRadius: '50%', 
-                backgroundColor: '#3b82f6',
-                marginRight: '0.5rem'
-              }} />
-              <span style={{ fontSize: '0.875rem' }}>SLA Compliance (%)</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ 
-                width: '12px', 
-                height: '2px', 
-                backgroundColor: '#10b981', 
-                marginRight: '0.5rem',
-                borderBottom: '2px dashed #10b981'
-              }} />
-              <span style={{ fontSize: '0.875rem' }}>Target (90%)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+              
+              {atRiskIssues.length === 0 && (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">
+                    No issues at risk. Great job!
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Card>
+          
+          <Card 
+            elevation={0} 
+            sx={{ 
+              overflow: 'hidden',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ 
+              px: 3, 
+              py: 2, 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}>
+              <Typography variant="h6" fontWeight={600}>Recent Activity</Typography>
+            </Box>
+            
+            <List sx={{ py: 0 }}>
+              {issues.slice(0, 5).map((issue, index) => (
+                <ListItem 
+                  key={issue.id}
+                  divider={index < 4}
+                  sx={{ 
+                    px: 3, 
+                    py: 2,
+                    '&:hover': {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                      cursor: 'pointer'
+                    }
+                  }}
+                  onClick={() => navigate(`/issues/${issue.id}`)}
+                >
+                  <Avatar sx={{ 
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    color: theme.palette.primary.main,
+                    mr: 2
+                  }}>
+                    <BugReportIcon />
+                  </Avatar>
+                  <ListItemText
+                    primary={
+                      <Typography variant="subtitle2" noWrap>
+                        {issue.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                        <PriorityChip priority={issue.priority} />
+                        <IssueStatusChip status={issue.status} />
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} lg={4}>
+          <Card 
+            elevation={0} 
+            sx={{ 
+              mb: 3,
+              overflow: 'hidden',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ 
+              px: 3, 
+              py: 2, 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}>
+              <Typography variant="h6" fontWeight={600}>Priority Distribution</Typography>
+            </Box>
+            
+            <Box sx={{ p: 3 }}>
+              {['P0', 'P1', 'P2', 'P3'].map((priority, index) => {
+                const count = issues.filter(issue => issue.priority === priority).length;
+                const percent = issues.length > 0 ? (count / issues.length) * 100 : 0;
+                
+                let color;
+                switch(priority) {
+                  case 'P0': color = theme.palette.error.main; break;
+                  case 'P1': color = theme.palette.warning.main; break;
+                  case 'P2': color = theme.palette.info.main; break;
+                  default: color = theme.palette.success.main;
+                }
+                
+                return (
+                  <Box key={priority} sx={{ mb: index < 3 ? 2 : 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography variant="body2" fontWeight={500}>
+                        {priority}
+                      </Typography>
+                      <Typography variant="body2">
+                        {count} ({percent.toFixed(0)}%)
+                      </Typography>
+                    </Box>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={percent} 
+                      sx={{ 
+                        height: 8, 
+                        borderRadius: 4,
+                        backgroundColor: alpha(color, 0.2),
+                        '& .MuiLinearProgress-bar': {
+                          backgroundColor: color
+                        }
+                      }} 
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
+          </Card>
+          
+          <Card 
+            elevation={0} 
+            sx={{ 
+              mb: 3,
+              overflow: 'hidden',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ 
+              px: 3, 
+              py: 2, 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}>
+              <Typography variant="h6" fontWeight={600}>Active Assignments</Typography>
+              <Button 
+                endIcon={<ArrowForwardIcon />} 
+                component={Link}
+                to="/assignments"
+                sx={{ textTransform: 'none' }}
+              >
+                View All
+              </Button>
+            </Box>
+            
+            <Stack spacing={0} divider={<Divider />}>
+              {assignments.slice(0, 3).map((assignment) => (
+                <Box 
+                  key={assignment.id}
+                  sx={{ 
+                    p: 2, 
+                    '&:hover': { 
+                      backgroundColor: alpha(theme.palette.primary.main, 0.04), 
+                      cursor: 'pointer' 
+                    }
+                  }}
+                  onClick={() => navigate(`/assignments/${assignment.id}`)}
+                >
+                  <Typography variant="subtitle2" noWrap gutterBottom>
+                    {assignment.title}
+                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Chip 
+                      label={assignment.status} 
+                      size="small" 
+                      color={
+                        assignment.status === 'COMPLETED' ? 'success' :
+                        assignment.status === 'IN_PROGRESS' ? 'primary' :
+                        assignment.status === 'PLANNING' ? 'info' : 'default'
+                      }
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {assignment.componentIds?.length || 0} components
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+              
+              {assignments.length === 0 && (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">
+                    No active assignments
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </Card>
+          
+          <Card 
+            elevation={0} 
+            sx={{ 
+              overflow: 'hidden',
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <CardContent>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="h6" gutterBottom>Need Help?</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Check out our comprehensive documentation for guides on using the issue tracker effectively.
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  fullWidth
+                  sx={{ mb: 1 }}
+                >
+                  View Documentation
+                </Button>
+                <Button 
+                  variant="contained" 
+                  fullWidth
+                >
+                  Contact Support
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
   );
 };
 
-export default SimpleDashboard;
+export default ModernDashboard;
