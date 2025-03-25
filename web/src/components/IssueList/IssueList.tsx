@@ -1,8 +1,6 @@
 // src/components/IssueList/IssueList.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Box, 
-  Typography, 
   Paper, 
   Table, 
   TableBody, 
@@ -14,7 +12,11 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Button, 
+  Typography,
+  Box,
+  TextField,
+  InputAdornment,
+  Button,
   LinearProgress,
   Menu,
   MenuItem,
@@ -22,16 +24,17 @@ import {
   ListItemText,
   Card,
   CardContent,
+  Tabs,
+  Tab,
+  Divider,
   useTheme,
   alpha,
-  Popover,
-  List,
-  ListItem,
-  Divider,
+  Badge,
 } from '@mui/material';
 import { 
-  Add as AddIcon,
+  Search as SearchIcon,
   FilterList as FilterIcon,
+  Add as AddIcon,
   Refresh as RefreshIcon,
   Save as SaveIcon,
   ArrowUpward as ArrowUpwardIcon,
@@ -42,14 +45,8 @@ import {
   ViewStream as ViewStreamIcon,
   Bookmark as BookmarkIcon,
   BookmarkBorder as BookmarkBorderIcon,
-  Done as DoneIcon,
-  CalendarToday as CalendarTodayIcon,
-  PriorityHigh as PriorityHighIcon,
-  Warning as WarningIcon,
-  Person as PersonIcon,
-  Label as LabelIcon,
 } from '@mui/icons-material';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
 import { Issue, Priority, Severity, Status } from '../../types/issues';
@@ -60,43 +57,191 @@ import IssueStatusChip from '../IssueStatusChip/IssueStatusChip';
 import PriorityChip from '../PriorityChip/PriorityChip';
 import SeverityChip from '../SeverityChip/SeverityChip';
 import SaveViewDialog from '../SaveViewDialog/SaveViewDialog';
-import FilterInput from '../FilterInput/FilterInput';
-import { FILTER_KEYS, FILTER_VALUES } from '../../utils/filterSuggestions';
 
-// Column definitions - these won't change
-import { columns, ActionsMenu } from './IssueListColumns';
+interface Column {
+  id: keyof Issue | 'actions';
+  label: string;
+  minWidth?: number;
+  align?: 'right' | 'left' | 'center';
+  format?: (value: any, issue?: Issue) => React.ReactNode;
+  sortable?: boolean;
+}
+
+const columns: Column[] = [
+  { 
+    id: 'id', 
+    label: 'ID', 
+    minWidth: 80,
+    sortable: true, 
+    format: (value: string) => value.slice(0, 8)
+  },
+  { 
+    id: 'title', 
+    label: 'Title', 
+    minWidth: 250,
+    sortable: true, 
+  },
+  { 
+    id: 'status', 
+    label: 'Status', 
+    minWidth: 100, 
+    align: 'center',
+    format: (value: Status) => <IssueStatusChip status={value} />,
+    sortable: true,
+  },
+  { 
+    id: 'priority', 
+    label: 'Priority', 
+    minWidth: 100,
+    align: 'center',
+    format: (value: Priority) => <PriorityChip priority={value} />,
+    sortable: true,
+  },
+  { 
+    id: 'severity', 
+    label: 'Severity', 
+    minWidth: 100,
+    align: 'center',
+    format: (value: Severity) => <SeverityChip severity={value} />,
+    sortable: true,
+  },
+  { 
+    id: 'assigneeId', 
+    label: 'Assignee', 
+    minWidth: 150,
+    sortable: true,
+    format: (value: string | null) => value ? 
+      <Chip 
+        size="small" 
+        label={value} // In real app, would show user name, not ID
+        color="default" 
+        variant="outlined"
+        avatar={
+          <Box component="span" sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {value.charAt(0).toUpperCase()}
+          </Box>
+        }
+      /> : 
+      <Typography variant="body2" color="text.secondary">Unassigned</Typography>
+  },
+  { 
+    id: 'createdAt', 
+    label: 'Created', 
+    minWidth: 120,
+    sortable: true,
+    format: (value: string) => formatDistanceToNow(new Date(value), { addSuffix: true }),
+  },
+  { 
+    id: 'dueDate', 
+    label: 'Due Date', 
+    minWidth: 120,
+    sortable: true,
+    format: (value: string | null, issue?: Issue) => {
+      if (!value) return <Typography variant="body2" color="text.secondary">None</Typography>;
+      const dueDate = new Date(value);
+      const now = new Date();
+      const isOverdue = dueDate < now;
+      const isNearlyDue = !isOverdue && (dueDate.getTime() - now.getTime()) < 24 * 60 * 60 * 1000; // 24 hours
+      
+      return (
+        <Tooltip title={dueDate.toLocaleString()}>
+          <Typography 
+            variant="body2" 
+            color={isOverdue ? 'error' : isNearlyDue ? 'warning.main' : 'text.primary'}
+            fontWeight={isOverdue || isNearlyDue ? 500 : 400}
+          >
+            {formatDistanceToNow(dueDate, { addSuffix: true })}
+          </Typography>
+        </Tooltip>
+      );
+    }
+  },
+  { 
+    id: 'actions', 
+    label: 'Actions', 
+    minWidth: 80,
+    align: 'center',
+    format: (value: any, issue?: Issue) => issue ? <ActionsMenu issue={issue} /> : null
+  },
+];
+
+interface ActionsMenuProps {
+  issue: Issue;
+}
+
+const ActionsMenu: React.FC<ActionsMenuProps> = ({ issue }) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  
+  const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    event.preventDefault();
+    setAnchorEl(event.currentTarget);
+  };
+  
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+  
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={handleOpen}
+      >
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleClose}
+        onClick={(e) => e.stopPropagation()}
+        PaperProps={{
+          elevation: 3,
+          sx: { minWidth: 200, borderRadius: 2 }
+        }}
+      >
+        <MenuItem 
+          component={Link} 
+          to={`/issues/${issue.id}`}
+          onClick={handleClose}
+        >
+          <ListItemIcon>
+            <ViewListIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="View Details" />
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Add Comment" />
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
 
 interface IssueListProps {
   defaultFilter?: string;
   savedViewId?: string;
 }
 
-const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }) => {
+const IssueList: React.FC<IssueListProps> = ({ defaultFilter = 'is:open', savedViewId }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filter, setFilter] = useState(defaultFilter);
+  const [searchQuery, setSearchQuery] = useState('');
   const [orderBy, setOrderBy] = useState<keyof Issue>('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [saveViewDialogOpen, setSaveViewDialogOpen] = useState(false);
   const [viewMenuAnchorEl, setViewMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [viewMode, setViewMode] = useState<'table' | 'cards' | 'list'>('table');
   const [tabValue, setTabValue] = useState(0);
-  const [filterMenuAnchorEl, setFilterMenuAnchorEl] = useState<null | HTMLElement>(null);
   
-  const { issues, loading, totalIssues, fetchIssues } = useIssues({ initialFilter: defaultFilter });
+  const { issues, loading, totalIssues, fetchIssues } = useIssues();
   const { savedViews, loading: viewsLoading, fetchSavedViews } = useViews();
-
-  // Parse URL search params for filter
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const filterParam = urlParams.get('filter');
-    if (filterParam) {
-      setFilter(filterParam);
-    }
-  }, [location.search]);
 
   // If a savedViewId is provided, load that view
   useEffect(() => {
@@ -110,28 +255,18 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
 
   // Apply filter when it changes
   useEffect(() => {
+    const finalFilter = searchQuery 
+      ? `${filter} ${searchQuery}` 
+      : filter;
+      
     fetchIssues({
-      filter,
+      filter: finalFilter,
       page,
       pageSize: rowsPerPage,
       orderBy,
       order,
     });
-    
-    // Update URL with filter
-    if (filter) {
-      const urlParams = new URLSearchParams(location.search);
-      urlParams.set('filter', filter);
-      navigate({ search: urlParams.toString() }, { replace: true });
-    } else {
-      // Remove filter param if no filter
-      const urlParams = new URLSearchParams(location.search);
-      if (urlParams.has('filter')) {
-        urlParams.delete('filter');
-        navigate({ search: urlParams.toString() }, { replace: true });
-      }
-    }
-  }, [filter, page, rowsPerPage, orderBy, order, fetchIssues, navigate, location.search]);
+  }, [filter, searchQuery, page, rowsPerPage, orderBy, order, fetchIssues]);
 
   // Load saved views
   useEffect(() => {
@@ -144,6 +279,11 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
     setPage(0);
   };
 
@@ -166,7 +306,7 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
         setFilter('assignee:me');
         break;
       case 3: // Critical Issues
-        setFilter('priority:P0 OR severity:S0');
+        setFilter('priority:p0 OR severity:s0');
         break;
     }
   };
@@ -181,6 +321,7 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
 
   const handleSaveView = (name: string, isTeamView: boolean, teamId?: string) => {
     // Save the view via API
+    // After saving, refresh the views list
     console.log('Saving view:', { name, filter, isTeamView, teamId });
     setSaveViewDialogOpen(false);
     fetchSavedViews();
@@ -209,21 +350,6 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
     });
   };
 
-  const handleOpenFilterMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setFilterMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseFilterMenu = () => {
-    setFilterMenuAnchorEl(null);
-  };
-
-  const addQuickFilter = (key: string, value: string) => {
-    const newFilter = filter ? `${filter} ${key}:${value}` : `${key}:${value}`;
-    setFilter(newFilter);
-    handleCloseFilterMenu();
-  };
-
-  // Render the issue cards view (for viewMode === 'cards')
   const renderIssueCards = () => {
     if (issues.length === 0) {
       return (
@@ -318,7 +444,6 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
     );
   };
 
-  // Render the issue list view (for viewMode === 'list')
   const renderIssueList = () => {
     if (issues.length === 0) {
       return (
@@ -448,104 +573,37 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
         </Button>
       </Box>
       
-      <Box sx={{ mb: 3 }}>
-        <FilterInput 
-          value={filter}
-          onChange={setFilter}
-          placeholder="Search issues or type filters (e.g., is:open priority:P0)"
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+        <TextField
+          placeholder="Search issues..."
+          variant="outlined"
+          size="small"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          sx={{ 
+            flexGrow: 1, 
+            minWidth: '200px',
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: theme.palette.background.paper,
+            }
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
         />
         
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<FilterIcon />}
             size="medium"
-            onClick={handleOpenFilterMenu}
           >
-            Quick Filters
+            Filters
           </Button>
-          
-          <Popover
-            open={Boolean(filterMenuAnchorEl)}
-            anchorEl={filterMenuAnchorEl}
-            onClose={handleCloseFilterMenu}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
-          >
-            <Box sx={{ p: 1, width: 250 }}>
-              <List dense>
-                <ListItem>
-                  <Typography variant="subtitle2">Status</Typography>
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('is', 'open')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <DoneIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Open Issues" />
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('is', 'assigned')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <PersonIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary="Assigned Issues" />
-                </ListItem>
-                
-                <Divider sx={{ my: 1 }} />
-                
-                <ListItem>
-                  <Typography variant="subtitle2">Priority</Typography>
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('priority', 'P0')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <PriorityHighIcon fontSize="small" color="error" />
-                  </ListItemIcon>
-                  <ListItemText primary="P0 (Critical)" />
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('priority', 'P1')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <PriorityHighIcon fontSize="small" color="warning" />
-                  </ListItemIcon>
-                  <ListItemText primary="P1 (High)" />
-                </ListItem>
-                
-                <Divider sx={{ my: 1 }} />
-                
-                <ListItem>
-                  <Typography variant="subtitle2">Due Date</Typography>
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('due', 'today')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <CalendarTodayIcon fontSize="small" color="primary" />
-                  </ListItemIcon>
-                  <ListItemText primary="Due Today" />
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('due', 'overdue')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <WarningIcon fontSize="small" color="error" />
-                  </ListItemIcon>
-                  <ListItemText primary="Overdue" />
-                </ListItem>
-                
-                <Divider sx={{ my: 1 }} />
-                
-                <ListItem>
-                  <Typography variant="subtitle2">Assignment</Typography>
-                </ListItem>
-                <ListItem button onClick={() => addQuickFilter('assignee', 'me')}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <PersonIcon fontSize="small" color="info" />
-                  </ListItemIcon>
-                  <ListItemText primary="Assigned to Me" />
-                </ListItem>
-              </List>
-            </Box>
-          </Popover>
           
           <Button
             variant="outlined"
@@ -655,6 +713,58 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = '', savedViewId }
           </Box>
         </Box>
       </Box>
+      
+      <Box sx={{ mb: 2 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              minWidth: 120,
+              fontWeight: 500,
+            },
+          }}
+        >
+          <Tab 
+            label="All Issues" 
+            icon={<Badge badgeContent={totalIssues} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            iconPosition="end"
+          />
+          <Tab 
+            label="Open Issues" 
+            icon={<Badge badgeContent={issues.filter(i => i.status !== 'CLOSED').length} color="info" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            iconPosition="end"
+          />
+          <Tab 
+            label="My Issues" 
+            icon={<Badge badgeContent={issues.filter(i => i.assigneeId === 'user-1').length} color="secondary" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            iconPosition="end"
+          />
+          <Tab 
+            label="Critical Issues" 
+            icon={<Badge badgeContent={issues.filter(i => i.priority === 'P0' || i.severity === 'S0').length} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            iconPosition="end"
+          />
+        </Tabs>
+      </Box>
+      
+      {filter && (
+        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 1, alignSelf: 'center' }}>
+            Active filters:
+          </Typography>
+          <Chip 
+            label={filter} 
+            onDelete={() => setFilter('')} 
+            color="primary" 
+            variant="outlined"
+            size="small"
+          />
+        </Box>
+      )}
       
       <Paper sx={{ position: 'relative', mb: 3, overflow: 'hidden', borderRadius: 2 }}>
         {loading && (

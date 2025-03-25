@@ -7,15 +7,20 @@ import {
   Paper,
   List,
   ListItem,
-  ListItemText,
   Typography,
   Popper,
   ClickAwayListener,
   useTheme,
   alpha,
+  Tooltip,
+  IconButton,
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
-import { getSuggestions } from '../../utils/filterSuggestions';
+import { 
+  Search as SearchIcon,
+  Info as InfoIcon,
+  Help as HelpIcon,
+} from '@mui/icons-material';
+import { getSuggestions, FILTER_KEYS } from '../../utils/filterSuggestions';
 import { parseFilterString } from '../../utils/filterParser';
 import FilterChip from '../FilterChip/FilterChip';
 
@@ -28,7 +33,7 @@ interface FilterInputProps {
 const FilterInput: React.FC<FilterInputProps> = ({ 
   value, 
   onChange, 
-  placeholder = 'Search issues...' 
+  placeholder = 'Search issues or type filters (e.g., is:open priority:P0)' 
 }) => {
   const theme = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,6 +42,7 @@ const FilterInput: React.FC<FilterInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [parsedFilters, setParsedFilters] = useState<Record<string, string[]>>({});
+  const [helpPopperAnchorEl, setHelpPopperAnchorEl] = useState<null | HTMLElement>(null);
   
   // Parse the filter value into structured filters
   useEffect(() => {
@@ -80,11 +86,14 @@ const FilterInput: React.FC<FilterInputProps> = ({
       setActiveSuggestionIndex(prev => 
         prev > 0 ? prev - 1 : prev
       );
+    } else if (e.key === 'Tab' && suggestions.length > 0) {
+      e.preventDefault(); // Prevent focus from moving out
+      applyActiveSuggestion();
     }
   };
   
   const applyActiveSuggestion = () => {
-    const suggestion = suggestions[activeSuggestionIndex];
+    const suggestion = suggestions[activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0];
     if (!suggestion) return;
     
     const colonPosition = inputValue.indexOf(':');
@@ -177,6 +186,13 @@ const FilterInput: React.FC<FilterInputProps> = ({
     }
   };
 
+  const handleHelpButtonClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setHelpPopperAnchorEl(helpPopperAnchorEl ? null : event.currentTarget);
+  };
+
+  // Check if the filter has any text search
+  const hasTextFilter = parsedFilters['text'] && parsedFilters['text'].length > 0;
+
   return (
     <Box sx={{ width: '100%', position: 'relative' }}>
       {/* Filter Chips */}
@@ -194,32 +210,79 @@ const FilterInput: React.FC<FilterInputProps> = ({
             />
           ));
         })}
+        
+        {hasTextFilter && (
+          <FilterChip 
+            filterKey="Search"
+            filterValue={parsedFilters['text'].join(' ')}
+            onDelete={() => handleRemoveFilter('text', parsedFilters['text'][0])}
+          />
+        )}
       </Box>
       
       {/* Filter Input */}
-      <TextField
-        inputRef={inputRef}
-        fullWidth
-        placeholder={placeholder}
-        value={inputValue}
-        onChange={handleInputChange}
-        onKeyDown={handleInputKeyDown}
-        onFocus={() => inputValue.trim() && setShowSuggestions(true)}
-        variant="outlined"
-        size="small"
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-        sx={{
-          '& .MuiOutlinedInput-root': {
-            backgroundColor: theme.palette.background.paper,
-          }
-        }}
-      />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <TextField
+          inputRef={inputRef}
+          fullWidth
+          placeholder={placeholder}
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
+          onFocus={() => inputValue.trim() && setShowSuggestions(true)}
+          variant="outlined"
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: theme.palette.background.paper,
+            }
+          }}
+        />
+        
+        <Tooltip title="Filter help">
+          <IconButton size="small" onClick={handleHelpButtonClick}>
+            <HelpIcon />
+          </IconButton>
+        </Tooltip>
+        
+        <Popper 
+          open={Boolean(helpPopperAnchorEl)} 
+          anchorEl={helpPopperAnchorEl}
+          placement="bottom-end"
+        >
+          <Paper sx={{ p: 2, maxWidth: 400, maxHeight: 400, overflow: 'auto' }}>
+            <Typography variant="h6" gutterBottom>Filter Syntax Help</Typography>
+            <Typography variant="body2" gutterBottom>
+              You can search using free text or specific filters in the format <strong>key:value</strong>.
+            </Typography>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Available filters:</Typography>
+            <List dense>
+              {FILTER_KEYS.map(filter => (
+                <ListItem key={filter.key} disablePadding sx={{ mb: 1 }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight="bold">
+                      {filter.key}:
+                    </Typography>
+                    <Typography variant="caption">
+                      {filter.description}
+                    </Typography>
+                  </Box>
+                </ListItem>
+              ))}
+            </List>
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Example: <code>is:open priority:P0 database</code> will find open P0 issues containing "database".
+            </Typography>
+          </Paper>
+        </Popper>
+      </Box>
       
       {/* Suggestions Dropdown */}
       <Popper

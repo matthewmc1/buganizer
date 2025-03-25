@@ -11,6 +11,8 @@ export const FILTER_KEYS = [
     { key: 'label', description: 'Issue labels' },
     { key: 'component', description: 'Component ID' },
     { key: 'id', description: 'Issue ID' },
+    { key: 'reporter', description: 'Issue reporter' },
+    { key: 'created', description: 'Creation date (today, yesterday, week, month)' },
   ];
   
   // Common values for each filter key
@@ -58,6 +60,12 @@ export const FILTER_KEYS = [
       { value: 'week', description: 'Due within a week' },
       { value: 'overdue', description: 'Overdue issues' },
     ],
+    'created': [
+      { value: 'today', description: 'Created today' },
+      { value: 'yesterday', description: 'Created yesterday' },
+      { value: 'week', description: 'Created within the last week' },
+      { value: 'month', description: 'Created within the last month' },
+    ],
     'label': [
       { value: 'bug', description: 'Bug issues' },
       { value: 'feature', description: 'Feature requests' },
@@ -71,6 +79,11 @@ export const FILTER_KEYS = [
       { value: 'comp-3', description: 'Component 3' },
       { value: 'comp-4', description: 'Component 4' },
       { value: 'comp-5', description: 'Component 5' },
+    ],
+    'reporter': [
+      { value: 'user-1', description: 'Admin User' },
+      { value: 'user-2', description: 'Developer User' },
+      { value: 'user-3', description: 'Manager User' },
     ],
   };
   

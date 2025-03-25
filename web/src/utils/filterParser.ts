@@ -29,7 +29,9 @@ export function parseFilterString(filterString: string): Record<string, string[]
       if (!filters['text']) {
         filters['text'] = [];
       }
-      filters['text'].push(part);
+      // Remove quotes if present
+      const cleanTerm = part.replace(/^"(.*)"$/, '$1');
+      filters['text'].push(cleanTerm);
     }
   });
   
@@ -53,10 +55,10 @@ export function applyFilters(issues: Issue[], filters: Record<string, string[]>)
           for (const value of values) {
             switch (value.toLowerCase()) {
               case 'open':
-                matched = issue.status !== 'CLOSED';
+                matched = issue.status !== 'CLOSED' && issue.status !== 'WONT_FIX' && issue.status !== 'DUPLICATE';
                 break;
               case 'closed':
-                matched = issue.status === 'CLOSED';
+                matched = issue.status === 'CLOSED' || issue.status === 'WONT_FIX' || issue.status === 'DUPLICATE';
                 break;
               case 'assigned':
                 matched = !!issue.assigneeId;
@@ -172,17 +174,19 @@ export function applyFilters(issues: Issue[], filters: Record<string, string[]>)
           break;
           
         case 'text':
-          // Handle free text search across multiple fields
-          const searchTerms = values.join(' ').toLowerCase();
-          const issueText = `${issue.title} ${issue.description || ''} ${issue.reproduceSteps || ''}`.toLowerCase();
-          matched = issueText.includes(searchTerms);
+          // Enhanced free text search - all terms must match somewhere
+          matched = values.every(term => {
+            const searchTerm = term.toLowerCase();
+            const issueText = `${issue.title} ${issue.description || ''} ${issue.reproduceSteps || ''}`.toLowerCase();
+            return issueText.includes(searchTerm);
+          });
           if (!matched) return false;
           break;
           
         case 'component':
           // Handle component filters
           matched = values.some(v => 
-            issue.componentId.toLowerCase() === v.toLowerCase()
+            issue.componentId.toLowerCase().includes(v.toLowerCase())
           );
           if (!matched) return false;
           break;
@@ -192,6 +196,55 @@ export function applyFilters(issues: Issue[], filters: Record<string, string[]>)
           matched = values.some(v => 
             issue.id.toLowerCase().includes(v.toLowerCase())
           );
+          if (!matched) return false;
+          break;
+          
+        case 'reporter':
+          // Handle reporter filters
+          matched = values.some(v => 
+            issue.reporterId.toLowerCase() === v.toLowerCase()
+          );
+          if (!matched) return false;
+          break;
+          
+        case 'created':
+          // Handle creation date filters - similar to due date
+          const createdDate = new Date(issue.createdAt);
+          for (const value of values) {
+            if (value.toLowerCase() === 'today') {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const tomorrow = new Date(today);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              matched = createdDate >= today && createdDate < tomorrow;
+            } else if (value.toLowerCase() === 'yesterday') {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              matched = createdDate >= yesterday && createdDate < today;
+            } else if (value.toLowerCase() === 'week') {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const weekAgo = new Date(today);
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              matched = createdDate >= weekAgo;
+            } else if (value.toLowerCase() === 'month') {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const monthAgo = new Date(today);
+              monthAgo.setMonth(monthAgo.getMonth() - 1);
+              matched = createdDate >= monthAgo;
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+              // Specific date in YYYY-MM-DD format
+              const specificDate = new Date(value);
+              specificDate.setHours(0, 0, 0, 0);
+              const nextDay = new Date(specificDate);
+              nextDay.setDate(nextDay.getDate() + 1);
+              matched = createdDate >= specificDate && createdDate < nextDay;
+            }
+            if (matched) break;
+          }
           if (!matched) return false;
           break;
       }
