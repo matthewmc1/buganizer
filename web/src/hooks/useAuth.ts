@@ -4,7 +4,6 @@ import axios from 'axios';
 import { User } from '../types/users';
 import { Organization } from '../types/organization';
 import { PERMISSION_MATRIX, Role, UserRole } from '../types/permissions';
-import api from '../utils/api';
 import { mockAuth } from '../utils/mockApi';
 
 interface AuthState {

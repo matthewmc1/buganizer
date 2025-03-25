@@ -1,7 +1,7 @@
 // src/hooks/useIssues.ts
 import { useState, useCallback, useEffect } from 'react';
-import axios from 'axios';
 import { Issue } from '../types/issues';
+import { parseFilterString, applyFilters } from '../utils/filterParser';
 
 interface UseIssuesOptions {
   initialFilter?: string;
@@ -19,13 +19,111 @@ interface FetchIssuesParams {
   order?: 'asc' | 'desc';
 }
 
+// Generate a set of mock issues for testing
+const generateMockIssues = (count: number, startIndex: number = 0): Issue[] => {
+  return Array.from({ length: count }, (_, i) => {
+    const index = startIndex + i;
+    // Randomize some properties for better testing
+    const isEven = index % 2 === 0;
+    const isThird = index % 3 === 0;
+    const isFifth = index % 5 === 0;
+    
+    // Create due dates - some today, some tomorrow, some overdue, some next week
+    let dueDate: string | null = null;
+    const dueDateOption = index % 4;
+    const today = new Date();
+    
+    if (dueDateOption === 0) {
+      // Today
+      dueDate = today.toISOString();
+    } else if (dueDateOption === 1) {
+      // Tomorrow
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      dueDate = tomorrow.toISOString();
+    } else if (dueDateOption === 2) {
+      // Next week
+      const nextWeek = new Date(today);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      dueDate = nextWeek.toISOString();
+    } else if (dueDateOption === 3) {
+      // Overdue
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      dueDate = yesterday.toISOString();
+    }
+    
+    // Create different statuses
+    let status = 'NEW';
+    if (isEven) status = 'IN_PROGRESS';
+    if (isThird) status = 'FIXED';
+    if (isFifth) status = 'CLOSED';
+    
+    // Create different priorities
+    let priority = 'P2'; // Default medium
+    if (index % 10 === 0) priority = 'P0'; // Some critical
+    else if (index % 7 === 0) priority = 'P1'; // Some high
+    else if (index % 5 === 0) priority = 'P3'; // Some low
+    else if (index % 13 === 0) priority = 'P4'; // Some trivial
+    
+    // Create different severities
+    let severity = 'S2'; // Default moderate
+    if (index % 11 === 0) severity = 'S0'; // Some critical
+    else if (index % 7 === 0) severity = 'S1'; // Some major
+    else if (index % 5 === 0) severity = 'S3'; // Some minor
+    
+    // Create different assignees (some unassigned)
+    let assigneeId = null;
+    if (isEven) assigneeId = 'user-1';
+    else if (isThird) assigneeId = 'user-2';
+    else if (isFifth) assigneeId = 'user-3';
+    
+    // Create different components
+    const componentId = `comp-${(index % 5) + 1}`;
+    
+    // Create different labels
+    const labels = [];
+    if (index % 2 === 0) labels.push('bug');
+    if (index % 3 === 0) labels.push('feature');
+    if (index % 5 === 0) labels.push('documentation');
+    if (index % 7 === 0) labels.push('enhancement');
+    if (index % 11 === 0) labels.push('critical');
+    
+    return {
+      id: `issue-${index + 1}`,
+      title: `Issue ${index + 1}: ${isEven ? 'Bug' : 'Feature'} in ${componentId}`,
+      description: `This is a ${isEven ? 'bug' : 'feature request'} found in the ${componentId} component.
+        ${isThird ? 'This is high priority and needs immediate attention.' : ''}
+        ${isFifth ? 'This is affecting multiple users.' : ''}`,
+      reproduceSteps: isEven ? `
+        1. Go to ${componentId}
+        2. Click on the button
+        3. Observe the error
+      ` : '',
+      componentId,
+      reporterId: 'user-1',
+      assigneeId,
+      priority,
+      severity,
+      status,
+      dueDate,
+      createdAt: new Date(Date.now() - (index * 86400000)).toISOString(),
+      updatedAt: new Date(Date.now() - (index * 43200000)).toISOString(),
+      labels,
+    };
+  });
+};
+
+// Create a large pool of mock issues
+const ALL_MOCK_ISSUES = generateMockIssues(100);
+
 export const useIssues = (options: UseIssuesOptions = {}) => {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalIssues, setTotalIssues] = useState(0);
   
-  const [filter, setFilter] = useState(options.initialFilter || 'is:open');
+  const [filter, setFilter] = useState(options.initialFilter || '');
   const [page, setPage] = useState(options.initialPage || 0);
   const [pageSize, setPageSize] = useState(options.initialPageSize || 10);
   const [orderBy, setOrderBy] = useState<keyof Issue>(options.initialOrderBy || 'createdAt');
@@ -42,42 +140,44 @@ export const useIssues = (options: UseIssuesOptions = {}) => {
     setError(null);
 
     try {
-      // Convert to API params
-      const apiParams = {
-        query: currentFilter,
-        page_size: currentPageSize,
-        page_token: currentPage > 0 ? String(currentPage * currentPageSize) : '',
-        // Add sorting params according to your API structure
-      };
-
-      // For development/demo, simulate API response
-      // Replace with real API call when available
-      // const response = await axios.get('/api/v1/issues/search', { params: apiParams });
-      
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Mock data for development
-      const mockIssues: Issue[] = Array.from({ length: currentPageSize }, (_, i) => ({
-        id: `issue-${currentPage * currentPageSize + i + 1}`,
-        title: `Sample Issue ${currentPage * currentPageSize + i + 1}`,
-        description: 'This is a sample issue description',
-        reproduceSteps: 'Steps to reproduce the issue',
-        componentId: 'comp-1',
-        reporterId: 'user-1',
-        assigneeId: i % 3 === 0 ? null : 'user-2',
-        priority: i % 5 === 0 ? 'P0' : i % 4 === 0 ? 'P1' : i % 3 === 0 ? 'P2' : i % 2 === 0 ? 'P3' : 'P4',
-        severity: i % 4 === 0 ? 'S0' : i % 3 === 0 ? 'S1' : i % 2 === 0 ? 'S2' : 'S3',
-        status: i % 7 === 0 ? 'CLOSED' : i % 5 === 0 ? 'FIXED' : i % 3 === 0 ? 'IN_PROGRESS' : 'NEW',
-        dueDate: i % 4 === 0 ? new Date(Date.now() + 86400000).toISOString() : null,
-        createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - i * 43200000).toISOString(),
-        labels: [`label-${i % 5 + 1}`, `label-${i % 3 + 6}`],
-      }));
+      // Parse the filter string
+      const parsedFilters = parseFilterString(currentFilter);
       
-      const mockTotal = 100;
+      // Apply filters to our mock data
+      let filteredIssues = applyFilters(ALL_MOCK_ISSUES, parsedFilters);
       
-      setIssues(mockIssues);
+      // Apply sorting
+      filteredIssues = [...filteredIssues].sort((a, b) => {
+        const aValue = a[currentOrderBy];
+        const bValue = b[currentOrderBy];
+        
+        if (aValue === null || aValue === undefined) return currentOrder === 'asc' ? -1 : 1;
+        if (bValue === null || bValue === undefined) return currentOrder === 'asc' ? 1 : -1;
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return currentOrder === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+        
+        // For dates (already in ISO string format, so string comparison works)
+        return currentOrder === 'asc' 
+          ? (aValue < bValue ? -1 : aValue > bValue ? 1 : 0)
+          : (bValue < aValue ? -1 : bValue > aValue ? 1 : 0);
+      });
+      
+      // Get the total count before pagination
+      const mockTotal = filteredIssues.length;
+      
+      // Apply pagination
+      const startIndex = currentPage * currentPageSize;
+      const paginatedIssues = filteredIssues.slice(startIndex, startIndex + currentPageSize);
+      
+      // Update state
+      setIssues(paginatedIssues);
       setTotalIssues(mockTotal);
       
       // Update state with the params that were actually used
@@ -87,9 +187,11 @@ export const useIssues = (options: UseIssuesOptions = {}) => {
       if (params.orderBy !== undefined) setOrderBy(params.orderBy);
       if (params.order !== undefined) setOrder(params.order);
       
+      return paginatedIssues;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch issues');
       console.error('Error fetching issues:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
