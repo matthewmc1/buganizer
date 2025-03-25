@@ -725,27 +725,82 @@ const IssueList: React.FC<IssueListProps> = ({ defaultFilter = 'is:open', savedV
               textTransform: 'none',
               minWidth: 120,
               fontWeight: 500,
+              // Add padding to prevent label and badge overlap
+              paddingRight: 2,
             },
+            // Remove the left margin that's causing the issue
+            '& .MuiTabs-flexContainer': {
+              marginLeft: 0
+            }
           }}
         >
           <Tab 
             label="All Issues" 
-            icon={<Badge badgeContent={totalIssues} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            icon={
+              <Badge 
+                badgeContent={totalIssues} 
+                color="primary" 
+                sx={{ 
+                  '& .MuiBadge-badge': { 
+                    fontSize: '0.7rem',
+                    // Adjust badge position to prevent overlap
+                    right: -8,
+                    top: 4
+                  } 
+                }} 
+              />
+            } 
             iconPosition="end"
           />
           <Tab 
             label="Open Issues" 
-            icon={<Badge badgeContent={issues.filter(i => i.status !== 'CLOSED').length} color="info" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            icon={
+              <Badge 
+                badgeContent={issues.filter(i => i.status !== 'CLOSED').length} 
+                color="info" 
+                sx={{ 
+                  '& .MuiBadge-badge': { 
+                    fontSize: '0.7rem',
+                    right: -8,
+                    top: 4
+                  } 
+                }} 
+              />
+            } 
             iconPosition="end"
           />
           <Tab 
             label="My Issues" 
-            icon={<Badge badgeContent={issues.filter(i => i.assigneeId === 'user-1').length} color="secondary" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            icon={
+              <Badge 
+                badgeContent={issues.filter(i => i.assigneeId === 'user-1').length} 
+                color="secondary" 
+                sx={{ 
+                  '& .MuiBadge-badge': { 
+                    fontSize: '0.7rem',
+                    right: -8,
+                    top: 4
+                  } 
+                }} 
+              />
+            } 
             iconPosition="end"
           />
           <Tab 
             label="Critical Issues" 
-            icon={<Badge badgeContent={issues.filter(i => i.priority === 'P0' || i.severity === 'S0').length} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.7rem' } }} />} 
+            icon={
+              <Badge 
+                badgeContent={issues.filter(i => i.priority === 'P0' || i.severity === 'S0').length} 
+                color="error" 
+                sx={{ 
+                  '& .MuiBadge-badge': { 
+                    fontSize: '0.7rem',
+                    right: -8,
+                    top: 4
+                  } 
+                }} 
+              />
+            } 
             iconPosition="end"
           />
         </Tabs>

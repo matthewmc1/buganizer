@@ -415,11 +415,11 @@ const Layout: React.FC = () => {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
-          ml: { sm: drawerOpen ? `${drawerWidth}px` : 0 },
+          ml: 0,
         }}
       >
         <Toolbar />
-        <Container maxWidth="xl" sx={{ py: 2 }}>
+        <Container maxWidth="xl" sx={{ py: 3}}>
           <Outlet />
         </Container>
       </Box>
