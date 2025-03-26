@@ -23,6 +23,7 @@ import OrganizationSettings from './components/OrganizationSettings/Organization
 import RegisterOrganization from './components/RegisterOrganization/RegisterOrganization';
 import TeamsList from './components/TeamsList/TeamsList';
 import TeamDetail from './components/TeamDetail/TeamDetail';
+import UserSettings from './components/UserSettings/UserSettings';
 
 const App: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -209,6 +210,9 @@ const App: React.FC = () => {
               {/* Team management */}
               <Route path='/teams' element={<TeamsList />} />
               <Route path='/teams/:id' element={<TeamDetail />} />
+
+              {/* Settings Page */}
+              <Route path='/settings' element={<UserSettings />} /> 
             </Route>
           </Route>
           
